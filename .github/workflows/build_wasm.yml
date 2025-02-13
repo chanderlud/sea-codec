@@ -1,0 +1,33 @@
+name: Build and Publish WASM
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          targets: wasm32-unknown-unknown
+
+      - name: Build WASM
+        run: |
+          cargo build --release --target wasm32-unknown-unknown
+          cp ./target/wasm32-unknown-unknown/release/codec.wasm ./web/codec.wasm
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web # Publish the web folder
+          destination_dir: . # Publish to the root of gh-pages

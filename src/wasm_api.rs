@@ -1,5 +1,5 @@
-// #[cfg(target_arch = "wasm32")]
 extern "C" {
+    #[cfg(target_arch = "wasm32")]
     fn js_error(ptr: *const std::os::raw::c_char);
 }
 
@@ -38,15 +38,25 @@ pub extern "C" fn wasm_sea_encode(
     input_length: usize,
     sample_rate: u32,
     channels: u32,
-    quality: u8,
+    bitrate: f32,
     vbr: bool,
     output_buffer: *mut u8,
     output_length: usize,
 ) -> usize {
+    use crate::codec::encoder::EncoderSettings;
     use crate::sea_encode;
 
     let input_samples = unsafe { std::slice::from_raw_parts(input_samples, input_length / 2) };
-    let encoded_data = sea_encode(input_samples, sample_rate, channels, quality, vbr);
+    let encoded_data = sea_encode(
+        input_samples,
+        sample_rate,
+        channels,
+        EncoderSettings {
+            residual_bits: bitrate,
+            vbr,
+            ..Default::default()
+        },
+    );
 
     assert!(encoded_data.len() <= output_length);
 
