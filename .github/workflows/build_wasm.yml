@@ -34,10 +34,9 @@ jobs:
           cp ./target/wasm32-unknown-unknown/release/codec.wasm ./web/codec.wasm
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
 
       - name: Build web dependencies
         run: |
