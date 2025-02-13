@@ -28,10 +28,22 @@ jobs:
         with:
           command: check
 
-      - name: Build WASM
+      - name: Build WASM file
         run: |
           cargo build --release --target wasm32-unknown-unknown
           cp ./target/wasm32-unknown-unknown/release/codec.wasm ./web/codec.wasm
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Build web dependencies
+        run: |
+          cd web
+          npm install
+          npm run build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

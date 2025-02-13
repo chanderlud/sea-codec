@@ -13,7 +13,7 @@ SEA file specification:
 
 All values are stored in little-endian order.
 
-# File header:
+# File header
 
 - char[4] magic; // "SEAC";
 - uint8_t version; // currently 0x01
@@ -25,7 +25,7 @@ All values are stored in little-endian order.
 - uint32_t metadata_size; // metadata size in bytes, can be zero
 - char\* metadata[metadata_size]; // metadata
 
-# Metadata:
+# Metadata
 
 - UTF-8 encoded string
 - contains key=value pairs, separated by newline character('\n')
@@ -39,7 +39,7 @@ author=John Doe
 title=My Song
 ```
 
-# Chunk:
+# Chunk
 
 - Has fixed size + fixed number of frames stored to make the file seekable
 - Slice count is variable
@@ -60,3 +60,8 @@ title=My Song
 - VBR residual lengths - 2 bits per residual length. offset = -1 (0 = chunk_residual - 1, 1 = chunk_residual, 2 = chunk_residual + 1, 3 = chunk_residual + 2)
 
 - uint8_t packed_residuals[] // interleaved samples
+
+# License
+
+MIT License
+Copyright (c) 2025 Dani Biró
