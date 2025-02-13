@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sea Audio Converter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+      }
+      .column {
+        flex: 1;
+        border: 1px solid #ccc;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      .file-drop {
+        border: 2px dashed #ccc;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+        cursor: pointer;
+      }
+      .file-drop.dragover {
+        border-color: #000;
+      }
+      audio {
+        width: 100%;
+        margin-top: 20px;
+      }
+      .hidden {
+        display: none;
+      }
+      .details {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #666;
+      }
+      label {
+        display: inline-block;
+        margin: 10px 0;
+      }
+      select {
+        padding: 5px;
+      }
+      button {
+        padding: 8px 15px;
+      }
+      #error {
+        color: red;
+        font-weight: bold;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sea Audio Converter</h1>
+    <div class="container">
+      <!-- Encoding Column -->
+      <div class="column">
+        <h2>Encode to Sea</h2>
+        <div class="file-drop" id="encode-drop">
+          Drag & drop an audio file (WAV/FLAC/MP3/OGG/OPUS) or click to upload.
+        </div>
+        <input type="file" id="encode-input" accept=".wav,.mp3,.ogg,.flac,.opus" class="hidden" />
+        <div>
+          <label for="quality">Bitrate:</label>
+          <select id="quality" name="quality">
+            <option value="2">~2.2 bps (7.3x compression)</option>
+            <option value="3">~3.2 bps (5x compression)</option>
+            <option value="4">~4.3 bps (3.7x compression)</option>
+            <option value="5">~5.4 bps (3x compression)</option>
+            <option value="6">~6.5 bps (2.5x compression)</option>
+          </select>
+        </div>
+        <div>
+          <label for="vbr">VBR (experimental):</label>
+          <input type="checkbox" id="vbr" name="vbr" />
+        </div>
+        <br />
+        <button id="encode-submit">Encode</button>
+        <label id="encode-processing" class="hidden">Processing...</label>
+        <audio id="encode-audio" controls class="hidden"></audio>
+        <a id="encode-download" class="hidden">Download Sea File</a>
+        <br />
+        <a id="encode-wav-download" class="hidden">Download decoded Sea File as WAV</a>
+        <div id="encode-details" class="details"></div>
+      </div>
+
+      <!-- Decoding Column -->
+      <div class="column">
+        <h2>Decode from Sea</h2>
+        <div class="file-drop" id="decode-drop">Drag & drop a Sea file or click to upload.</div>
+        <input type="file" id="decode-input" accept=".sea" class="hidden" />
+        <button id="decode-submit">Decode</button>
+        <audio id="decode-audio" controls class="hidden"></audio>
+        <a id="decode-download" class="hidden">Download WAV File</a>
+        <div id="decode-details" class="details"></div>
+      </div>
+    </div>
+
+    <div id="error"></div>
+
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>
