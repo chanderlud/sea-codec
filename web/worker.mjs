@@ -46,7 +46,7 @@ let wasm;
 
         new Uint8Array(wasmExports.memory.buffer).set(inputSamplesU8, wasmInputBuffer);
 
-        wasmOutputBufferSize = Math.floor(inputSamples.byteLength / 2);
+        wasmOutputBufferSize = Math.floor(inputSamples.byteLength);
         wasmOutputBuffer = wasmExports.allocate(wasmOutputBufferSize);
 
         const outputLength = wasmExports.wasm_sea_encode(
@@ -92,7 +92,7 @@ let wasm;
         wasmInputBuffer = wasmExports.allocate(wasmInputBufferSize);
         new Uint8Array(wasmExports.memory.buffer).set(encodedData, wasmInputBuffer);
 
-        wasmOutputBufferSize = wasmInputBufferSize * 10;
+        wasmOutputBufferSize = wasmInputBufferSize * 15;
         wasmOutputBuffer = wasmExports.allocate(wasmOutputBufferSize);
 
         wasmSampleRateBuffer = wasmExports.allocate(4);
