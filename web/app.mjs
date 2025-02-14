@@ -1,4 +1,4 @@
-import { formatNumber, readFile } from "./utils.mjs";
+import { downloadFile, formatNumber, readFile } from "./utils.mjs";
 
 const worker = (() => {
   const w = new Worker("worker.mjs", {
@@ -9,7 +9,7 @@ const worker = (() => {
   w.onmessage = (e) => {
     const [id, ...args] = e.data;
     if (id === "error") {
-      document.getElementById("error").textContent = e.message;
+      document.getElementById("error").innerHTML = args[0];
       return;
     }
     const cb = callbacks[id];
@@ -102,12 +102,19 @@ DOM_ENCODE_SUBMIT.addEventListener("click", async () => {
 
   DOM_ENCODE_RESULT.innerHTML = `
   Encode result:
+  <a href="#" id="download_sea">Download Sea File</a>
   <audio controls src="${audioUrl}"></audio>
   <br />
   Difference from original:
   <audio controls src="${differenceFromOriginalUrl}"></audio>
   <pre>${status}</pre>
   `;
+
+  const fileName = fileInput.files[0].name.split(".")[0] + ".sea";
+  document.getElementById("download_sea").addEventListener("click", (e) => {
+    downloadFile(encoded, fileName, "application/octet-stream");
+    e.preventDefault();
+  });
 
   DOM_ENCODE_SUBMIT.disabled = false;
 });
@@ -122,20 +129,25 @@ DOM_DECODE_SUBMIT.addEventListener("click", async () => {
   const file = fileInput.files[0];
   const encodedArrayBuffer = new Uint8Array(await readFile(file));
 
-  const { wave: decodedWave, duration: decodeDuration } = await worker.decodeSEA(
-    encodedArrayBuffer
-  );
+  const { wave: decodedWav, duration: decodeDuration } = await worker.decodeSEA(encodedArrayBuffer);
 
-  const audioUrl = URL.createObjectURL(new Blob([decodedWave], { type: "audio/wav" }));
+  const audioUrl = URL.createObjectURL(new Blob([decodedWav], { type: "audio/wav" }));
 
   const status = [`Decoding took ${decodeDuration.toFixed(2)} ms`].join("<br />");
 
   DOM_DECODE_RESULT.innerHTML = `
   Decode result:
   <audio controls src="${audioUrl}"></audio>
+    <a href="#" id="download_wav">Download WAV file</a>
   <br />
   <pre>${status}</pre>
   `;
+
+  const fileName = fileInput.files[0].name.replace(".sea", ".wav");
+  document.getElementById("download_wav").addEventListener("click", (e) => {
+    downloadFile(decodedWav, fileName, "application/octet-stream");
+    e.preventDefault();
+  });
 
   DOM_DECODE_SUBMIT.disabled = false;
 });

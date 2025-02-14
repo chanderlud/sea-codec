@@ -206,8 +206,13 @@ addEventListener("message", async (e) => {
   const [id, fn, ...rest] = data;
 
   if (fn in exports) {
-    const res = await exports[fn](...rest);
-    postMessage([id, res]);
+    try {
+      const res = await exports[fn](...rest);
+      postMessage([id, res]);
+    } catch (e) {
+      postMessage(["error", e.message]);
+      console.error(e);
+    }
   } else {
     throw new Error(`Unknown function: ${fn}`);
   }
