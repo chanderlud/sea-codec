@@ -4,6 +4,7 @@ use std::array;
 pub struct SeaDequantTab {
     scale_factor_bits: usize,
 
+    cached_reciprocals: [Vec<i32>; 9],
     cached_dqt: [Vec<Vec<i32>>; 9],
 }
 
@@ -14,29 +15,35 @@ pub static IDEAL_POW_FACTOR: [f32; 8] = [12.0, 11.65, 11.20, 10.58, 9.64, 8.75, 
 
 impl SeaDequantTab {
     pub fn init(scale_factor_bits: usize) -> Self {
-        SeaDequantTab {
-            scale_factor_bits,
+        let mut res = SeaDequantTab {
+            scale_factor_bits: 0,
+            cached_reciprocals: array::from_fn(|_| Vec::new()),
             cached_dqt: array::from_fn(|_| Vec::new()),
-        }
+        };
+
+        res.set_scalefactor_bits(scale_factor_bits);
+
+        res
     }
 
-    fn calculate_ideal_pow_factors() -> [[f32; 8]; 5] {
-        let mut ideal_power_factors: [[f32; 8]; 5] = [[0.0; 8]; 5];
-
-        for scale_factor_bits in 2..=6 {
-            for residual_bits in 1..=8 {
-                ideal_power_factors[scale_factor_bits - 2][residual_bits - 1] =
-                    IDEAL_POW_FACTOR[residual_bits - 1] / (scale_factor_bits as f32)
-            }
+    pub fn set_scalefactor_bits(&mut self, scale_factor_bits: usize) {
+        if self.scale_factor_bits == scale_factor_bits {
+            return;
         }
-        ideal_power_factors
+
+        self.scale_factor_bits = scale_factor_bits;
+        self.cached_reciprocals =
+            array::from_fn(|i| Self::generate_reciprocal(scale_factor_bits, i));
+        self.cached_dqt = array::from_fn(|i: usize| Self::generate_dqt(scale_factor_bits, i));
+    }
+
+    fn get_ideal_pow_factor(scale_factor_bits: usize, residual_bits: usize) -> f32 {
+        IDEAL_POW_FACTOR[residual_bits - 1] / (scale_factor_bits as f32)
     }
 
     fn calculate_scale_factors(residual_bits: usize, scale_factor_bits: usize) -> Vec<i32> {
-        let ideal_pow_factors = Self::calculate_ideal_pow_factors();
-
         let mut output: Vec<i32> = Vec::new();
-        let power_factor = ideal_pow_factors[scale_factor_bits - 2][residual_bits - 1];
+        let power_factor = Self::get_ideal_pow_factor(scale_factor_bits, residual_bits);
 
         let scale_factor_items = 1 << scale_factor_bits;
         for index in 1..=scale_factor_items {
@@ -47,14 +54,22 @@ impl SeaDequantTab {
         output
     }
 
-    fn get_scalefactor_reciprocals(residual_bits: usize, scale_factor_bits: usize) -> Vec<i32> {
+    fn generate_reciprocal(scale_factor_bits: usize, residual_bits: usize) -> Vec<i32> {
+        if residual_bits == 0 {
+            return vec![];
+        }
+
         let scale_factors = Self::calculate_scale_factors(residual_bits, scale_factor_bits);
-        let mut output: Vec<i32> = Vec::new();
+        let mut new_reciprocal: Vec<i32> = Vec::with_capacity(scale_factors.len());
         for sf in scale_factors {
             let value = ((1 << 16) as f32 / sf as f32) as i32;
-            output.push(value);
+            new_reciprocal.push(value);
         }
-        output
+        new_reciprocal
+    }
+
+    pub fn get_scalefactor_reciprocals(&self, residual_bits: usize) -> &Vec<i32> {
+        &self.cached_reciprocals[residual_bits as usize]
     }
 
     fn gen_dqt_table(residual_bits: usize) -> Vec<f32> {
@@ -81,7 +96,11 @@ impl SeaDequantTab {
         curve
     }
 
-    fn generate_dqt(&self, scale_factor_bits: usize, residual_bits: usize) -> Vec<Vec<i32>> {
+    fn generate_dqt(scale_factor_bits: usize, residual_bits: usize) -> Vec<Vec<i32>> {
+        if residual_bits == 0 {
+            return vec![];
+        }
+
         let dqt = Self::gen_dqt_table(residual_bits);
 
         let scalefactor_items = 1 << scale_factor_bits;
@@ -106,17 +125,7 @@ impl SeaDequantTab {
         output
     }
 
-    pub fn get_dqt(&mut self, scale_factor_bits: usize, residual_bits: usize) -> &Vec<Vec<i32>> {
-        if scale_factor_bits != self.scale_factor_bits {
-            self.cached_dqt = array::from_fn(|_| Vec::new());
-        }
-
-        let cached_dqt = &self.cached_dqt[residual_bits as usize];
-        if cached_dqt.len() == 0 {
-            let new_dqt = self.generate_dqt(scale_factor_bits, residual_bits);
-            self.cached_dqt[residual_bits as usize] = new_dqt;
-        }
-
+    pub fn get_dqt(&self, residual_bits: usize) -> &Vec<Vec<i32>> {
         &self.cached_dqt[residual_bits as usize]
     }
 }

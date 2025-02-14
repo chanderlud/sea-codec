@@ -42,10 +42,12 @@ impl SeaEncoderTrait for CbrEncoder {
         let mut scale_factors = Vec::<u8>::new();
         let mut residuals = vec![0u8; samples.len()];
 
-        let dqt: &Vec<Vec<i32>> =
-            dequant_tab.get_dqt(self.scale_factor_bits as usize, self.residual_size as usize);
+        let dqt: &Vec<Vec<i32>> = dequant_tab.get_dqt(self.residual_size as usize);
 
         let slice_size = self.scale_factor_frames as usize * self.file_header.channels as usize;
+
+        let scalefactor_reciprocals =
+            dequant_tab.get_scalefactor_reciprocals(self.residual_size as usize);
 
         for (slice_index, input_slice) in samples.chunks(slice_size).enumerate() {
             for channel_offset in 0..self.file_header.channels as usize {
@@ -54,6 +56,7 @@ impl SeaEncoderTrait for CbrEncoder {
                         self.file_header.channels as usize,
                         quant_tab,
                         dqt,
+                        scalefactor_reciprocals,
                         &input_slice[channel_offset..],
                         self.prev_scalefactor[channel_offset] as i32,
                         &self.lms[channel_offset],

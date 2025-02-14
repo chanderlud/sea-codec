@@ -135,6 +135,7 @@ pub fn get_residuals_with_best_scalefactor(
     channels: usize,
     quant_tab: &SeaQuantTab,
     dequant_tab: &Vec<Vec<i32>>,
+    scalefactor_reciprocals: &[i32],
     samples: &[i16],
     prev_scalefactor: i32, // provided as optimization, can be 0
     ref_lms: &SeaLMS,
@@ -150,11 +151,6 @@ pub fn get_residuals_with_best_scalefactor(
     let mut best_scalefactor: i32 = 0;
 
     let mut lms: SeaLMS = ref_lms.clone();
-
-    let scalefactor_reciprocals = SeaDequantTab::get_scalefactor_reciprocals(
-        residual_size as usize,
-        scale_factor_bits as usize,
-    );
 
     let scalefactor_end = 1 << scale_factor_bits;
 

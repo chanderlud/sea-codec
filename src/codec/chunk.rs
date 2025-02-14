@@ -66,6 +66,7 @@ impl SeaChunk {
         encoded: &[u8],
         file_header: &SeaFileHeader,
         remaining_frames: Option<usize>,
+        dequant_tab: &mut SeaDequantTab,
     ) -> Result<Self, SeaError> {
         assert!(encoded.len() <= file_header.chunk_size as usize);
 
@@ -81,6 +82,8 @@ impl SeaChunk {
         };
 
         let scale_factor_bits = encoded[1] >> 4;
+        dequant_tab.set_scalefactor_bits(scale_factor_bits as usize);
+
         let residual_size = SeaResidualSize::from(encoded[1] & 0b1111);
         let scale_factor_frames = encoded[2];
         let _reserved = encoded[3];
@@ -212,13 +215,7 @@ impl SeaChunk {
 
         let mut lms = self.lms.clone();
 
-        let dqts: Vec<Vec<Vec<i32>>> = (1..=8)
-            .map(|i| {
-                dequant_tab
-                    .get_dqt(self.scale_factor_bits as usize, i)
-                    .clone()
-            })
-            .collect();
+        let dqts: Vec<Vec<Vec<i32>>> = (1..=8).map(|i| dequant_tab.get_dqt(i).clone()).collect();
 
         for (frame_index, channel_residuals) in self
             .residuals

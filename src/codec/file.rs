@@ -176,7 +176,12 @@ impl SeaFile {
             return Ok(None);
         }
 
-        let chunk = SeaChunk::from_slice(&encoded, &self.header, remaining_frames);
+        let chunk = SeaChunk::from_slice(
+            &encoded,
+            &self.header,
+            remaining_frames,
+            &mut self.dequant_tab,
+        );
         match chunk {
             Ok(chunk) => Ok(Some(chunk)),
             Err(err) => Err(err),

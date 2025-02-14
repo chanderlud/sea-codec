@@ -146,10 +146,10 @@ impl VbrEncoder {
 
         let slice_size = self.scale_factor_frames as usize * self.file_header.channels as usize;
 
-        let dqt: &Vec<Vec<i32>> = dequant_tab.get_dqt(
-            self.scale_factor_bits as usize,
-            analyze_residual_size as usize,
-        );
+        let dqt: &Vec<Vec<i32>> = dequant_tab.get_dqt(analyze_residual_size as usize);
+
+        let scalefactor_reciprocals =
+            dequant_tab.get_scalefactor_reciprocals(analyze_residual_size as usize);
 
         let mut lms = self.lms.clone();
         let mut prev_scalefactor = self.prev_scalefactor.clone();
@@ -161,6 +161,7 @@ impl VbrEncoder {
                         self.file_header.channels as usize,
                         quant_tab,
                         dqt,
+                        scalefactor_reciprocals,
                         &input_slice[channel_offset..],
                         prev_scalefactor[channel_offset],
                         &lms[channel_offset],
@@ -195,7 +196,10 @@ impl SeaEncoderTrait for VbrEncoder {
         for (slice_index, input_slice) in samples.chunks(slice_size).enumerate() {
             for channel_offset in 0..self.file_header.channels as usize {
                 let dqt: &Vec<Vec<i32>> = dequant_tab.get_dqt(
-                    self.scale_factor_bits as usize,
+                    residual_bits[slice_index * self.file_header.channels as usize + channel_offset]
+                        as usize,
+                );
+                let scalefactor_reciprocals = dequant_tab.get_scalefactor_reciprocals(
                     residual_bits[slice_index * self.file_header.channels as usize + channel_offset]
                         as usize,
                 );
@@ -205,6 +209,7 @@ impl SeaEncoderTrait for VbrEncoder {
                         self.file_header.channels as usize,
                         quant_tab,
                         dqt,
+                        scalefactor_reciprocals,
                         &input_slice[channel_offset..],
                         self.prev_scalefactor[channel_offset] as i32,
                         &self.lms[channel_offset],
