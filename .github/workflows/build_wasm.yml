@@ -45,7 +45,7 @@ jobs:
           npm run build
 
       - name: Rewrite .gitignore to only contain node_modules
-        run: echo "node_modules" > .gitignore
+        run: echo "node_modules" > web/.gitignore
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
