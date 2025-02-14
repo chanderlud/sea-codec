@@ -44,8 +44,8 @@ jobs:
           npm install
           npm run build
 
-      - name: View web directory
-        run: ls -la web
+      - name: Remove .gitignore
+        run: rm web/.gitignore
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
