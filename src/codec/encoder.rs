@@ -51,7 +51,7 @@ where
         total_frames: Option<u32>,
         settings: EncoderSettings,
         reader: R,
-        writer: W,
+        mut writer: W,
     ) -> Result<Self, SeaError> {
         let header = SeaFileHeader {
             version: 1,
@@ -65,9 +65,18 @@ where
 
         let file = SeaFile::new(header, &settings)?;
 
+        let mut state = SeaEncoderState::Start;
+
+        if let Some(total_frames) = total_frames {
+            if total_frames == 0 {
+                writer.write_all(&file.header.serialize())?;
+                state = SeaEncoderState::WritingFrames;
+            }
+        }
+
         Ok(SeaEncoder {
             file,
-            state: SeaEncoderState::Start,
+            state,
             reader,
             writer,
             written_frames: 0,
