@@ -31,7 +31,7 @@
       }
       audio {
         width: 100%;
-        margin-top: 20px;
+        margin-top: 5px;
       }
       .hidden {
         display: none;
@@ -64,43 +64,49 @@
       <!-- Encoding Column -->
       <div class="column">
         <h2>Encode to Sea</h2>
-        <div class="file-drop" id="encode-drop">
+        <div class="file-drop" id="encode_drop">
           Drag & drop an audio file (WAV/FLAC/MP3/OGG/OPUS) or click to upload.
         </div>
-        <input type="file" id="encode-input" accept=".wav,.mp3,.ogg,.flac,.opus" class="hidden" />
+        <input type="file" id="encode_input" accept=".wav,.mp3,.ogg,.flac,.opus" class="hidden" />
         <div>
-          <label for="quality">Bitrate:</label>
-          <select id="quality" name="quality">
-            <option value="2">~2.2 bps (7.3x compression)</option>
-            <option value="3">~3.2 bps (5x compression)</option>
-            <option value="4">~4.3 bps (3.7x compression)</option>
-            <option value="5">~5.4 bps (3x compression)</option>
-            <option value="6">~6.5 bps (2.5x compression)</option>
+          <label for="residual_size">Bitrate:</label>
+          <select id="residual_size" name="residual_size">
+            <option value="1">~1.2 bps (13.3x compression)</option>
+            <option value="2">~2.2 bps ( 7.3x compression)</option>
+            <option value="3" selected>~3.2 bps ( 5.0x compression)</option>
+            <option value="4">~4.2 bps ( 3.8x compression)</option>
+            <option value="5">~5.2 bps ( 3.1x compression)</option>
+            <option value="6">~6.2 bps ( 2.6x compression)</option>
+            <option value="7">~7.2 bps ( 2.2x compression)</option>
+            <option value="8">~8.2 bps ( 2.0x compression)</option>
+            <option value="vbr">VBR (experimental)</option>
           </select>
         </div>
         <div>
-          <label for="vbr">VBR (experimental):</label>
-          <input type="checkbox" id="vbr" name="vbr" />
+          VBR target bitrate:
+          <input
+            type="range"
+            min="1"
+            max="8"
+            value="3"
+            step="0.1"
+            id="vbr_target_bitrate"
+            disabled="disabled"
+          />
+          <label id="vbr_target_bitrate_label">3.0</label>
         </div>
         <br />
-        <button id="encode-submit">Encode</button>
-        <label id="encode-processing" class="hidden">Processing...</label>
-        <audio id="encode-audio" controls class="hidden"></audio>
-        <a id="encode-download" class="hidden">Download Sea File</a>
-        <br />
-        <a id="encode-wav-download" class="hidden">Download decoded Sea File as WAV</a>
-        <div id="encode-details" class="details"></div>
+        <button id="encode_submit">Encode</button>
+        <div id="encode_result" style="margin-top: 10px"></div>
       </div>
 
       <!-- Decoding Column -->
       <div class="column">
         <h2>Decode from Sea</h2>
-        <div class="file-drop" id="decode-drop">Drag & drop a Sea file or click to upload.</div>
-        <input type="file" id="decode-input" accept=".sea" class="hidden" />
-        <button id="decode-submit">Decode</button>
-        <audio id="decode-audio" controls class="hidden"></audio>
-        <a id="decode-download" class="hidden">Download WAV File</a>
-        <div id="decode-details" class="details"></div>
+        <div class="file-drop" id="decode_drop">Drag & drop a Sea file or click to upload.</div>
+        <input type="file" id="decode_input" accept=".sea" class="hidden" />
+        <button id="decode_submit">Decode</button>
+        <div id="decode_result" style="margin-top: 10px"></div>
       </div>
     </div>
 

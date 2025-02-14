@@ -1,7 +1,9 @@
-import { decodeAudioFile } from "./dist/deps.modern.js";
+import { formatNumber, readFile } from "./utils.mjs";
 
 const worker = (() => {
-  const w = new Worker("worker.js");
+  const w = new Worker("worker.mjs", {
+    type: "module",
+  });
   const callbacks = {};
   let id = 1;
   w.onmessage = (e) => {
@@ -14,147 +16,128 @@ const worker = (() => {
     setTimeout(cb(...args), 0);
     delete callbacks[id];
   };
+
+  const call = (fn, ...args) =>
+    new Promise((resolve, reject) => {
+      callbacks[id] = resolve;
+      w.postMessage([id, fn, ...args]);
+    });
+
   return {
-    call: (fn, ...args) => {
-      return new Promise((resolve, reject) => {
-        callbacks[id] = resolve;
-        w.postMessage([id, fn, ...args]);
-      });
-    },
+    decodeAudioFile: (...args) => call("decodeAudioFile", ...args),
+    encodeSEA: (...args) => call("encodeSEA", ...args),
+    decodeSEA: (...args) => call("decodeSEA", ...args),
   };
 })();
 
-function readFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file);
-  });
-}
+const DOM_ENCODE_DROP = document.getElementById("encode_drop");
+const DOM_ENCODE_FILE = document.getElementById("encode_input");
+const DOM_RESIDUAL_SIZE = document.getElementById("residual_size");
+const DOM_VBR_TARGET_BITRATE = document.getElementById("vbr_target_bitrate");
+const DOM_VBR_TARGET_BITRATE_LABEL = document.getElementById("vbr_target_bitrate_label");
+const DOM_ENCODE_SUBMIT = document.getElementById("encode_submit");
+const DOM_ENCODE_RESULT = document.getElementById("encode_result");
 
-function downloadFile(data, filename, mimeType) {
-  const blob = new Blob([data], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+const DOM_DECODE_DROP = document.getElementById("decode_drop");
+const DOM_DECODE_FILE = document.getElementById("decode_input");
+const DOM_DECODE_SUBMIT = document.getElementById("decode_submit");
+const DOM_DECODE_RESULT = document.getElementById("decode_result");
 
-function formatNumber(x) {
-  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
+DOM_RESIDUAL_SIZE.addEventListener("input", () => {
+  DOM_VBR_TARGET_BITRATE.disabled = DOM_RESIDUAL_SIZE.value === "vbr" ? "" : "disabled";
+});
 
-document.getElementById("encode-submit").addEventListener("click", async () => {
-  const fileInput = document.getElementById("encode-input");
+DOM_VBR_TARGET_BITRATE.addEventListener("input", () => {
+  const value = parseFloat(DOM_VBR_TARGET_BITRATE.value);
+  DOM_VBR_TARGET_BITRATE_LABEL.textContent = value.toFixed(1);
+});
+
+DOM_ENCODE_SUBMIT.addEventListener("click", async () => {
+  const fileInput = DOM_ENCODE_FILE;
   if (!fileInput.files.length) return alert("Please select a file.");
 
+  const inputArrayBuffer = await readFile(fileInput.files[0]);
   const {
     samples: interleavedInput,
     sampleRate,
     channels,
-  } = await (async () => {
-    const file = fileInput.files[0];
-    const arrayBuffer = await readFile(file);
-    const audioBuffer = await decodeAudioFile(arrayBuffer);
-    const samplesPerChannel = [...Array(audioBuffer.numberOfChannels).keys()].map((i) =>
-      audioBuffer.getChannelData(i)
-    );
+  } = await worker.decodeAudioFile(inputArrayBuffer);
 
-    return {
-      samples: await worker.call(
-        "channelsToInterleaved",
-        samplesPerChannel,
-        audioBuffer.numberOfChannels
-      ),
-      sampleRate: audioBuffer.sampleRate,
-      channels: audioBuffer.numberOfChannels,
-    };
-  })();
-
-  const quality = parseInt(document.querySelector('select[name="quality"]').value);
+  const residual_size = parseInt(DOM_RESIDUAL_SIZE.value);
   const vbr = false;
 
-  document.getElementById("encode-submit").disabled = true;
-  document.getElementById("encode-processing").classList.remove("hidden");
-  document.getElementById("encode-details").innerHTML = "";
+  DOM_ENCODE_SUBMIT.disabled = true;
+  DOM_ENCODE_RESULT.innerHTML = "<p>Encoding...</p>";
 
-  const { encoded, duration: encodeDuration } = await worker.call(
-    "encode",
+  const { encoded, duration: encodeDuration } = await worker.encodeSEA(
     interleavedInput,
     sampleRate,
     channels,
-    quality,
+    residual_size,
     vbr
   );
 
   const {
-    wave: decodedWave,
+    differenceFromOriginal,
+    wave: decodedWav,
     duration: decodeDuration,
     psnr,
-  } = await worker.call("decode", encoded, interleavedInput);
+  } = await worker.decodeSEA(encoded, interleavedInput);
 
-  const status = `
-  PCM 16 bit size ${formatNumber(interleavedInput.length * 2)} bytes <br />
-  Compressed size: ${formatNumber(encoded.length)} bytes (${(
-    (encoded.length / (interleavedInput.length * 2)) *
-    100
-  ).toFixed(2)} %) <br />
-  Encoding took ${encodeDuration.toFixed(2)} ms <br/>
-  Decoding took ${decodeDuration.toFixed(2)} ms <br />
-  PSNR ${psnr.toFixed(2)} dB <br/>`;
+  const pcm16Size = interleavedInput.length * 2;
+  const compressedSize = (encoded.length / pcm16Size) * 100;
+  const status = [
+    `PCM 16 bit size ${formatNumber(pcm16Size)} bytes`,
+    `Compressed size: ${formatNumber(encoded.length)} bytes (${compressedSize.toFixed(2)} %)`,
+    `Bits per sample: ${((encoded.length * 8) / interleavedInput.length).toFixed(2)} bps`,
+    `Encoding took ${encodeDuration.toFixed(2)} ms`,
+    `Decoding took ${decodeDuration.toFixed(2)} ms`,
+    `PSNR ${psnr.toFixed(2)} dB`,
+  ].join("<br />");
 
-  document.getElementById("encode-details").innerHTML = status;
+  const audioUrl = URL.createObjectURL(new Blob([decodedWav], { type: "audio/wav" }));
+  const differenceFromOriginalUrl = URL.createObjectURL(
+    new Blob([differenceFromOriginal], { type: "audio/wav" })
+  );
 
-  const audioUrl = URL.createObjectURL(new Blob([decodedWave], { type: "audio/wav" }));
-  const audioElement = document.getElementById("encode-audio");
-  audioElement.src = audioUrl;
-  audioElement.classList.remove("hidden");
+  DOM_ENCODE_RESULT.innerHTML = `
+  Encode result:
+  <audio controls src="${audioUrl}"></audio>
+  <br />
+  Difference from original:
+  <audio controls src="${differenceFromOriginalUrl}"></audio>
+  <pre>${status}</pre>
+  `;
 
-  const encodeDownloadLink = document.getElementById("encode-download");
-  encodeDownloadLink.href = URL.createObjectURL(new Blob([encoded]));
-  encodeDownloadLink.classList.remove("hidden");
-  encodeDownloadLink.onclick = (e) => {
-    downloadFile(encoded, "output.sea", "application/octet-stream");
-    e.preventDefault();
-  };
-
-  const encodeWavDownloadLink = document.getElementById("encode-wav-download");
-  encodeWavDownloadLink.href = URL.createObjectURL(new Blob([decodedWave], { type: "audio/wav" }));
-  encodeWavDownloadLink.classList.remove("hidden");
-  encodeWavDownloadLink.onclick = (e) => {
-    downloadFile(decodedWave, "output.wav", "audio/wav");
-    e.preventDefault();
-  };
-
-  document.getElementById("encode-processing").classList.add("hidden");
-  document.getElementById("encode-submit").disabled = false;
+  DOM_ENCODE_SUBMIT.disabled = false;
 });
 
-document.getElementById("decode-submit").addEventListener("click", async () => {
-  const fileInput = document.getElementById("decode-input");
+DOM_DECODE_SUBMIT.addEventListener("click", async () => {
+  const fileInput = DOM_DECODE_FILE;
   if (!fileInput.files.length) return alert("Please select a file.");
 
+  DOM_DECODE_SUBMIT.disabled = true;
+  DOM_DECODE_RESULT.innerHTML = "<p>Decoding...</p>";
+
   const file = fileInput.files[0];
-  const arrayBuffer = await readFile(file);
-  const encodedData = new Uint8Array(arrayBuffer);
+  const encodedArrayBuffer = new Uint8Array(await readFile(file));
 
-  const decodeStart = performance.now();
-  const decodedData = sea.wasm_sea_decode(encodedData);
-  const decodeEnd = performance.now();
-  document.getElementById("decode-time").textContent = `Decoding time: ${(
-    decodeEnd - decodeStart
-  ).toFixed(2)} ms`;
+  const { wave: decodedWave, duration: decodeDuration } = await worker.decodeSEA(
+    encodedArrayBuffer
+  );
 
-  const wavBuffer = encodeWAV(decodedData, 44100, 1);
-  downloadFile(wavBuffer, "output.wav", "audio/wav");
+  const audioUrl = URL.createObjectURL(new Blob([decodedWave], { type: "audio/wav" }));
 
-  const audioUrl = URL.createObjectURL(new Blob([wavBuffer], { type: "audio/wav" }));
-  const audioElement = document.getElementById("decode-audio");
-  audioElement.src = audioUrl;
-  audioElement.classList.remove("hidden");
+  const status = [`Decoding took ${decodeDuration.toFixed(2)} ms`].join("<br />");
+
+  DOM_DECODE_RESULT.innerHTML = `
+  Decode result:
+  <audio controls src="${audioUrl}"></audio>
+  <br />
+  <pre>${status}</pre>
+  `;
+
+  DOM_DECODE_SUBMIT.disabled = false;
 });
 
 function setupDragAndDrop(dropZone, fileInput) {
@@ -176,5 +159,5 @@ function setupDragAndDrop(dropZone, fileInput) {
   });
 }
 
-setupDragAndDrop(document.getElementById("encode-drop"), document.getElementById("encode-input"));
-setupDragAndDrop(document.getElementById("decode-drop"), document.getElementById("decode-input"));
+setupDragAndDrop(DOM_ENCODE_DROP, DOM_ENCODE_FILE);
+setupDragAndDrop(DOM_DECODE_DROP, DOM_DECODE_FILE);
