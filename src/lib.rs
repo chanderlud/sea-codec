@@ -52,13 +52,10 @@ pub fn sea_decode(encoded: &[u8]) -> SeaDecodeInfo {
 
     let header = sea_decoder.get_header();
 
-    let decoded = sea_decoded
-        .chunks_exact(2)
-        .map(|chunk| i16::from_le_bytes(chunk.try_into().unwrap()))
-        .collect::<Vec<i16>>();
+    let decoded: &[i16] = cast_slice(&sea_decoded);
 
     SeaDecodeInfo {
-        samples: decoded,
+        samples: decoded.to_vec(),
         sample_rate: header.sample_rate,
         channels: header.channels as u32,
     }

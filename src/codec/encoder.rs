@@ -1,5 +1,7 @@
 use std::{io, rc::Rc};
 
+use bytemuck::cast_slice;
+
 use super::{
     common::{read_max_or_zero, SeaError},
     file::{SeaFile, SeaFileHeader},
@@ -97,12 +99,8 @@ where
             )));
         }
 
-        let samples = buffer
-            .chunks_exact(std::mem::size_of::<i16>())
-            .map(|chunk| i16::from_le_bytes(chunk.try_into().unwrap()))
-            .collect::<Vec<i16>>();
-
-        Ok(samples)
+        let samples: &[i16] = cast_slice(&buffer);
+        Ok(samples.to_vec())
     }
 
     pub fn encode_frame(&mut self) -> Result<bool, SeaError> {
