@@ -7,12 +7,13 @@ use crate::codec::{chunk::SeaChunk, common::read_max_or_zero};
 
 use super::{
     common::{
-        read_u16_le, read_u32_be, read_u32_le, read_u8, SeaDequantTab, SeaEncoderTrait, SeaError,
-        SeaQuantTab, SEAC_MAGIC,
+        read_u16_le, read_u32_be, read_u32_le, read_u8, SeaEncoderTrait, SeaError, SEAC_MAGIC,
     },
+    dqt::SeaDequantTab,
     encoder::EncoderSettings,
     encoder_cbr::CbrEncoder,
     encoder_vbr::VbrEncoder,
+    qt::SeaQuantTab,
 };
 
 #[derive(Debug, Clone)]

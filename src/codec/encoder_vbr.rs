@@ -2,12 +2,13 @@ use crate::codec::{common::SeaResidualSize, lms::LMS_LEN};
 
 use super::{
     common::{
-        get_residuals_with_best_scalefactor, EncodedSamples, SeaDequantTab, SeaEncoderTrait,
-        SeaQuantTab, SEA_MAX_CHANNELS,
+        get_residuals_with_best_scalefactor, EncodedSamples, SeaEncoderTrait, SEA_MAX_CHANNELS,
     },
+    dqt::SeaDequantTab,
     encoder::EncoderSettings,
     file::SeaFileHeader,
     lms::SeaLMS,
+    qt::SeaQuantTab,
 };
 
 pub struct VbrEncoder {

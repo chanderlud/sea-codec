@@ -4,7 +4,8 @@ use crate::codec::{bits::BitUnpacker, common::clamp_i16, lms::LMS_LEN};
 
 use super::{
     bits::BitPacker,
-    common::{SeaDequantTab, SeaError, SeaResidualSize},
+    common::{SeaError, SeaResidualSize},
+    dqt::SeaDequantTab,
     encoder::EncoderSettings,
     file::SeaFileHeader,
     lms::SeaLMS,

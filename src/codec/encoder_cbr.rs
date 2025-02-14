@@ -1,11 +1,13 @@
 use super::{
     common::{
-        get_residuals_with_best_scalefactor, EncodedSamples, SeaDequantTab, SeaEncoderTrait,
-        SeaQuantTab, SeaResidualSize, SEA_MAX_CHANNELS,
+        get_residuals_with_best_scalefactor, EncodedSamples, SeaEncoderTrait, SeaResidualSize,
+        SEA_MAX_CHANNELS,
     },
+    dqt::SeaDequantTab,
     encoder::EncoderSettings,
     file::SeaFileHeader,
     lms::SeaLMS,
+    qt::SeaQuantTab,
 };
 
 pub struct CbrEncoder {
