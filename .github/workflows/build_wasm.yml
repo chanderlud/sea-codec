@@ -44,8 +44,8 @@ jobs:
           npm install
           npm run build
 
-      - name: Remove .gitignore
-        run: rm web/.gitignore
+      - name: Rewrite .gitignore to only contain node_modules
+        run: echo "node_modules" > .gitignore
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -53,3 +53,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./web # Publish the web folder
           destination_dir: . # Publish to the root of gh-pages
+          force_orphan: true
