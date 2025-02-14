@@ -1,13 +1,17 @@
 # SEA - Simple Embedded Audio Codec
 
-This is a simple, fast, lossy audio codec for embedded devices, inspired by the QOA codec.
+This is a low complexity, lossy audio codec for embedded devices, inspired by the QOA codec.
 
 Features:
 
-- Lossy
+- Main use case in low power embedded devices, game assets, live streaming
+- Low complexity, time domain compression
+- No low pass filtering, flat frequency response
 - 1.3 - 8.5 bits per sample
 - CBR and VBR
-- Fixed frame lengths -> seekable in constant time
+- Fixed frame length -> seekable in constant time
+- Can store metadata
+- MIT License
 
 SEA file specification:
 
