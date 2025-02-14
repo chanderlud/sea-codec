@@ -8,7 +8,7 @@ use crate::codec::{chunk::SeaChunk, common::read_max_or_zero};
 use super::{
     common::{
         read_u16_le, read_u32_be, read_u32_le, read_u8, SeaDequantTab, SeaEncoderTrait, SeaError,
-        SEAC_MAGIC,
+        SeaQuantTab, SEAC_MAGIC,
     },
     encoder::EncoderSettings,
     encoder_cbr::CbrEncoder,
@@ -88,6 +88,7 @@ impl SeaFileHeader {
 
 pub struct SeaFile {
     pub header: SeaFileHeader,
+    pub quant_tab: SeaQuantTab,
     pub dequant_tab: SeaDequantTab,
 
     cbr_encoder: Option<CbrEncoder>,
@@ -108,6 +109,7 @@ impl SeaFile {
             cbr_encoder: Some(cbr_encoder),
             vbr_encoder: Some(vbr_encoder),
             encoder_settings: Some(encoder_settings.clone()),
+            quant_tab: SeaQuantTab::init(),
             dequant_tab: SeaDequantTab::init(encoder_settings.scale_factor_bits as usize),
         })
     }
@@ -120,6 +122,7 @@ impl SeaFile {
             cbr_encoder: None,
             vbr_encoder: None,
             encoder_settings: None,
+            quant_tab: SeaQuantTab::init(),
             dequant_tab: SeaDequantTab::init(0),
         })
     }
@@ -135,8 +138,8 @@ impl SeaFile {
         };
 
         let encoded = match encoder_settings.vbr {
-            true => vbr_encoder.encode(samples, &mut self.dequant_tab),
-            false => cbr_encoder.encode(samples, &mut self.dequant_tab),
+            true => vbr_encoder.encode(samples, &self.quant_tab, &mut self.dequant_tab),
+            false => cbr_encoder.encode(samples, &self.quant_tab, &mut self.dequant_tab),
         };
 
         let chunk = SeaChunk::new(

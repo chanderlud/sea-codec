@@ -3,7 +3,7 @@ use crate::codec::{common::SeaResidualSize, lms::LMS_LEN};
 use super::{
     common::{
         get_residuals_with_best_scalefactor, EncodedSamples, SeaDequantTab, SeaEncoderTrait,
-        SEA_MAX_CHANNELS,
+        SeaQuantTab, SEA_MAX_CHANNELS,
     },
     encoder::EncoderSettings,
     file::SeaFileHeader,
@@ -133,7 +133,12 @@ impl VbrEncoder {
         residual_sizes
     }
 
-    fn analyze(&mut self, input_slice: &[i16], dequant_tab: &mut SeaDequantTab) -> Vec<u8> {
+    fn analyze(
+        &mut self,
+        input_slice: &[i16],
+        quant_tab: &SeaQuantTab,
+        dequant_tab: &mut SeaDequantTab,
+    ) -> Vec<u8> {
         let mut errors: Vec<u64> = Vec::new(); // vec![0; vbr_chunks * self.file_header.channels as usize];
 
         let analyze_residual_size = SeaResidualSize::from(self.vbr_target_bitrate as u8 + 1);
@@ -153,6 +158,7 @@ impl VbrEncoder {
                 let (_best_rank, _, best_lms, best_scalefactor) =
                     get_residuals_with_best_scalefactor(
                         self.file_header.channels as usize,
+                        quant_tab,
                         dqt,
                         &input_slice[channel_offset..],
                         prev_scalefactor[channel_offset],
@@ -172,11 +178,16 @@ impl VbrEncoder {
 }
 
 impl SeaEncoderTrait for VbrEncoder {
-    fn encode(&mut self, samples: &[i16], dequant_tab: &mut SeaDequantTab) -> EncodedSamples {
+    fn encode(
+        &mut self,
+        samples: &[i16],
+        quant_tab: &SeaQuantTab,
+        dequant_tab: &mut SeaDequantTab,
+    ) -> EncodedSamples {
         let mut scale_factors = Vec::<u8>::new();
         let mut residuals = vec![0u8; samples.len()];
 
-        let residual_bits = self.analyze(samples, dequant_tab);
+        let residual_bits = self.analyze(samples, quant_tab, dequant_tab);
 
         let slice_size = self.scale_factor_frames as usize * self.file_header.channels as usize;
 
@@ -191,6 +202,7 @@ impl SeaEncoderTrait for VbrEncoder {
                 let (_best_rank, best_residuals, best_lms, best_scalefactor) =
                     get_residuals_with_best_scalefactor(
                         self.file_header.channels as usize,
+                        quant_tab,
                         dqt,
                         &input_slice[channel_offset..],
                         self.prev_scalefactor[channel_offset] as i32,

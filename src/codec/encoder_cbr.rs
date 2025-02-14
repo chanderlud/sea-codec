@@ -1,7 +1,7 @@
 use super::{
     common::{
         get_residuals_with_best_scalefactor, EncodedSamples, SeaDequantTab, SeaEncoderTrait,
-        SeaResidualSize, SEA_MAX_CHANNELS,
+        SeaQuantTab, SeaResidualSize, SEA_MAX_CHANNELS,
     },
     encoder::EncoderSettings,
     file::SeaFileHeader,
@@ -31,7 +31,12 @@ impl CbrEncoder {
 }
 
 impl SeaEncoderTrait for CbrEncoder {
-    fn encode(&mut self, samples: &[i16], dequant_tab: &mut SeaDequantTab) -> EncodedSamples {
+    fn encode(
+        &mut self,
+        samples: &[i16],
+        quant_tab: &SeaQuantTab,
+        dequant_tab: &mut SeaDequantTab,
+    ) -> EncodedSamples {
         let mut scale_factors = Vec::<u8>::new();
         let mut residuals = vec![0u8; samples.len()];
 
@@ -45,6 +50,7 @@ impl SeaEncoderTrait for CbrEncoder {
                 let (_best_rank, best_residuals, best_lms, best_scalefactor) =
                     get_residuals_with_best_scalefactor(
                         self.file_header.channels as usize,
+                        quant_tab,
                         dqt,
                         &input_slice[channel_offset..],
                         self.prev_scalefactor[channel_offset] as i32,
