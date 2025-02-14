@@ -29,7 +29,7 @@ impl BitUnpacker {
         }
     }
 
-    const MASKS: [u32; 8] = [0, 1, 3, 7, 15, 31, 63, 127];
+    const MASKS: [u32; 9] = [0, 1, 3, 7, 15, 31, 63, 127, 255];
 
     fn process_bytes_const(&mut self, input: &[u8]) {
         let bits = self.bitlengths[0] as u32;
