@@ -2,7 +2,7 @@ use std::io;
 
 use bytemuck::cast_slice;
 
-use super::{
+use crate::codec::{
     common::SeaError,
     file::{SeaFile, SeaFileHeader},
 };

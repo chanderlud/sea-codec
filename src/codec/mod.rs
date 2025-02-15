@@ -1,12 +1,10 @@
-mod base_encoder;
 mod bits;
 mod chunk;
-mod common;
-pub mod decoder;
+pub mod common;
 mod dqt;
-pub mod encoder;
+mod encoder_base;
 mod encoder_cbr;
 mod encoder_vbr;
-mod file;
+pub mod file;
 mod lms;
 mod qt;

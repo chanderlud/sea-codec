@@ -7,7 +7,7 @@ use super::{
     qt::SeaQuantTab,
 };
 
-pub struct BaseEncoder {
+pub struct EncoderBase {
     channels: usize,
     scale_factor_bits: usize,
 
@@ -25,7 +25,7 @@ pub fn sea_div(v: i32, scalefactor_reciprocal: i64) -> i32 {
     (n + (v.signum() as i64 - n.signum() as i64)) as i32
 }
 
-impl BaseEncoder {
+impl EncoderBase {
     pub fn new(channels: usize, scale_factor_bits: usize) -> Self {
         Self {
             channels,

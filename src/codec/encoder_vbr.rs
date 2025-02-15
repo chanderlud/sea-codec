@@ -1,10 +1,12 @@
-use crate::codec::{common::SeaResidualSize, lms::LMS_LEN};
+use crate::{
+    codec::{common::SeaResidualSize, lms::LMS_LEN},
+    encoder::EncoderSettings,
+};
 
 use super::{
-    base_encoder::BaseEncoder,
     common::{EncodedSamples, SeaEncoderTrait, SEA_MAX_CHANNELS},
     dqt::SeaDequantTab,
-    encoder::EncoderSettings,
+    encoder_base::EncoderBase,
     file::SeaFileHeader,
     lms::SeaLMS,
     qt::SeaQuantTab,
@@ -16,7 +18,7 @@ pub struct VbrEncoder {
     scale_factor_frames: u8,
     vbr_target_bitrate: f32,
     prev_scalefactor: [i32; SEA_MAX_CHANNELS as usize],
-    base_encoder: BaseEncoder,
+    base_encoder: EncoderBase,
     pub lms: Vec<SeaLMS>,
 }
 
@@ -31,7 +33,7 @@ impl VbrEncoder {
             prev_scalefactor: [0; SEA_MAX_CHANNELS as usize],
             lms: SeaLMS::init_vec(file_header.channels as u32),
             scale_factor_frames: encoder_settings.scale_factor_frames,
-            base_encoder: BaseEncoder::new(
+            base_encoder: EncoderBase::new(
                 file_header.channels as usize,
                 encoder_settings.scale_factor_bits as usize,
             ),

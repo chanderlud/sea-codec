@@ -1,12 +1,14 @@
 use std::usize;
 
-use crate::codec::{bits::BitUnpacker, common::clamp_i16, lms::LMS_LEN};
+use crate::{
+    codec::{bits::BitUnpacker, common::clamp_i16, lms::LMS_LEN},
+    encoder::EncoderSettings,
+};
 
 use super::{
     bits::BitPacker,
     common::{SeaError, SeaResidualSize},
     dqt::SeaDequantTab,
-    encoder::EncoderSettings,
     file::SeaFileHeader,
     lms::SeaLMS,
 };

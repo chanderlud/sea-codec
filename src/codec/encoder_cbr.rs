@@ -1,8 +1,9 @@
+use crate::encoder::EncoderSettings;
+
 use super::{
-    base_encoder::BaseEncoder,
     common::{EncodedSamples, SeaEncoderTrait, SeaResidualSize},
     dqt::SeaDequantTab,
-    encoder::EncoderSettings,
+    encoder_base::EncoderBase,
     file::SeaFileHeader,
     lms::SeaLMS,
 };
@@ -12,7 +13,7 @@ pub struct CbrEncoder {
     residual_size: SeaResidualSize,
     scale_factor_frames: u8,
     scale_factor_bits: u8,
-    base_encoder: BaseEncoder,
+    base_encoder: EncoderBase,
 }
 
 impl CbrEncoder {
@@ -22,7 +23,7 @@ impl CbrEncoder {
             residual_size: SeaResidualSize::from(encoder_settings.residual_bits.floor() as u8),
             scale_factor_frames: encoder_settings.scale_factor_frames,
             scale_factor_bits: encoder_settings.scale_factor_bits,
-            base_encoder: BaseEncoder::new(
+            base_encoder: EncoderBase::new(
                 file_header.channels as usize,
                 encoder_settings.scale_factor_bits as usize,
             ),

@@ -1,4 +1,4 @@
-use codec::codec::encoder::EncoderSettings;
+use codec::encoder::EncoderSettings;
 use helpers::{encode_decode, gen_test_signal, TEST_SAMPLE_RATE};
 
 extern crate codec;

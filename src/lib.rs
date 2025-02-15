@@ -1,12 +1,12 @@
 use std::io::Cursor;
 
 use bytemuck::cast_slice;
-use codec::{
-    decoder::SeaDecoder,
-    encoder::{EncoderSettings, SeaEncoder},
-};
+use decoder::SeaDecoder;
+use encoder::{EncoderSettings, SeaEncoder};
 
 pub mod codec;
+pub mod decoder;
+pub mod encoder;
 pub mod wasm_api;
 
 pub fn sea_encode(
