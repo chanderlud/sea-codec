@@ -43,7 +43,7 @@ impl SeaDequantTab {
                 count += self.cached_dqt[i][j].len();
             }
         }
-        println!("count of cached_dqt: {:?}", count);
+        println!("count of cached_dqt: {:?} {}", count, scale_factor_bits);
     }
 
     fn get_ideal_pow_factor(scale_factor_bits: usize, residual_bits: usize) -> f32 {

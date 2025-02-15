@@ -86,12 +86,16 @@ impl SeaFileHeader {
     }
 }
 
+enum ActiveEncoder {
+    Cbr(CbrEncoder),
+    Vbr(VbrEncoder),
+}
+
 pub struct SeaFile {
     pub header: SeaFileHeader,
     pub dequant_tab: SeaDequantTab,
 
-    cbr_encoder: Option<CbrEncoder>,
-    vbr_encoder: Option<VbrEncoder>,
+    encoder: Option<ActiveEncoder>,
     encoder_settings: Option<EncoderSettings>,
 }
 
@@ -100,13 +104,15 @@ impl SeaFile {
         header: SeaFileHeader,
         encoder_settings: &EncoderSettings,
     ) -> Result<Self, SeaError> {
-        let cbr_encoder = CbrEncoder::new(&header, &encoder_settings.clone());
-        let vbr_encoder = VbrEncoder::new(&header, &encoder_settings.clone());
-
         Ok(SeaFile {
             header: header.clone(),
-            cbr_encoder: Some(cbr_encoder),
-            vbr_encoder: Some(vbr_encoder),
+            encoder: if encoder_settings.vbr {
+                let vbr_encoder = VbrEncoder::new(&header, &encoder_settings.clone());
+                Some(ActiveEncoder::Vbr(vbr_encoder))
+            } else {
+                let cbr_encoder = CbrEncoder::new(&header, &encoder_settings.clone());
+                Some(ActiveEncoder::Cbr(cbr_encoder))
+            },
             encoder_settings: Some(encoder_settings.clone()),
             dequant_tab: SeaDequantTab::init(encoder_settings.scale_factor_bits as usize),
         })
@@ -117,8 +123,7 @@ impl SeaFile {
 
         Ok(SeaFile {
             header,
-            cbr_encoder: None,
-            vbr_encoder: None,
+            encoder: None,
             encoder_settings: None,
             dequant_tab: SeaDequantTab::init(0),
         })
@@ -126,17 +131,16 @@ impl SeaFile {
 
     pub fn make_chunk(&mut self, samples: &[i16]) -> Result<Vec<u8>, SeaError> {
         let encoder_settings = self.encoder_settings.as_ref().unwrap();
-        let vbr_encoder = self.vbr_encoder.as_mut().unwrap();
-        let cbr_encoder = self.cbr_encoder.as_mut().unwrap();
+        let encoder = self.encoder.as_mut().unwrap();
 
-        let initial_lms = match encoder_settings.vbr {
-            true => vbr_encoder.lms.clone(),
-            false => cbr_encoder.lms.clone(),
+        let initial_lms = match encoder {
+            ActiveEncoder::Cbr(encoder) => encoder.get_lms().clone(),
+            ActiveEncoder::Vbr(encoder) => encoder.lms.clone(),
         };
 
-        let encoded = match encoder_settings.vbr {
-            true => vbr_encoder.encode(samples, &mut self.dequant_tab),
-            false => cbr_encoder.encode(samples, &mut self.dequant_tab),
+        let encoded = match encoder {
+            ActiveEncoder::Cbr(encoder) => encoder.encode(samples, &mut self.dequant_tab),
+            ActiveEncoder::Vbr(encoder) => encoder.encode(samples, &mut self.dequant_tab),
         };
 
         let chunk = SeaChunk::new(
