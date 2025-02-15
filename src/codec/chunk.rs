@@ -1,7 +1,7 @@
 use std::usize;
 
 use crate::{
-    codec::{bits::BitUnpacker, common::clamp_i16, lms::LMS_LEN},
+    codec::{bits::BitUnpacker, lms::LMS_LEN},
     encoder::EncoderSettings,
 };
 
@@ -21,8 +21,8 @@ pub enum SeaChunkType {
 
 #[derive(Debug)]
 pub struct SeaChunk {
-    file_header: SeaFileHeader,
-    chunk_type: SeaChunkType,
+    pub file_header: SeaFileHeader,
+    pub chunk_type: SeaChunkType,
 
     pub scale_factor_bits: u8,
     pub scale_factor_frames: u8,
@@ -68,7 +68,6 @@ impl SeaChunk {
         encoded: &[u8],
         file_header: &SeaFileHeader,
         remaining_frames: Option<usize>,
-        dequant_tab: &mut SeaDequantTab,
     ) -> Result<Self, SeaError> {
         assert!(encoded.len() <= file_header.chunk_size as usize);
 
@@ -84,7 +83,6 @@ impl SeaChunk {
         };
 
         let scale_factor_bits = encoded[1] >> 4;
-        dequant_tab.set_scalefactor_bits(scale_factor_bits as usize);
 
         let residual_size = SeaResidualSize::from(encoded[1] & 0b1111);
         let scale_factor_frames = encoded[2];
@@ -208,48 +206,6 @@ impl SeaChunk {
             vbr_residual_sizes,
             residuals,
         })
-    }
-
-    pub fn decode(&self, dequant_tab: &mut SeaDequantTab) -> Vec<i16> {
-        let mut output: Vec<i16> = Vec::with_capacity(
-            self.file_header.frames_per_chunk as usize * self.file_header.channels as usize,
-        );
-
-        let mut lms = self.lms.clone();
-
-        let dqts: Vec<Vec<Vec<i32>>> = (1..=8).map(|i| dequant_tab.get_dqt(i).clone()).collect();
-
-        for (frame_index, channel_residuals) in self
-            .residuals
-            .chunks_exact(self.file_header.channels as usize)
-            .enumerate()
-        {
-            let scale_factor_index = (frame_index / self.scale_factor_frames as usize)
-                * self.file_header.channels as usize;
-
-            for (channel_index, residual) in channel_residuals.iter().enumerate() {
-                let residual_size: usize = if matches!(self.chunk_type, SeaChunkType::VBR) {
-                    self.vbr_residual_sizes[scale_factor_index + channel_index] as usize
-                } else {
-                    self.residual_size as usize
-                };
-
-                let scale_factor = self.scale_factors[scale_factor_index + channel_index];
-
-                let predicted = lms[channel_index].predict();
-
-                let quantized: usize = *residual as usize;
-
-                let dequantized =
-                    dqts[residual_size as usize - 1][scale_factor as usize][quantized];
-
-                let reconstructed = clamp_i16(predicted + dequantized);
-                output.push(reconstructed);
-                lms[channel_index].update(reconstructed as i16, dequantized);
-            }
-        }
-
-        output
     }
 
     fn serialize_header(&self) -> [u8; 4] {

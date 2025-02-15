@@ -1,6 +1,7 @@
 mod bits;
 mod chunk;
 pub mod common;
+mod decoder;
 mod dqt;
 mod encoder_base;
 mod encoder_cbr;

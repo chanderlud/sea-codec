@@ -36,7 +36,7 @@ impl CbrEncoder {
 }
 
 impl SeaEncoderTrait for CbrEncoder {
-    fn encode(&mut self, samples: &[i16], dequant_tab: &mut SeaDequantTab) -> EncodedSamples {
+    fn encode(&mut self, samples: &[i16]) -> EncodedSamples {
         let mut scale_factors =
             vec![0u8; samples.len().div_ceil(self.scale_factor_frames as usize)];
         let mut residuals = vec![0u8; samples.len()];

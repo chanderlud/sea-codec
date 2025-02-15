@@ -12,6 +12,7 @@ use super::{
     common::{
         read_u16_le, read_u32_be, read_u32_le, read_u8, SeaEncoderTrait, SeaError, SEAC_MAGIC,
     },
+    decoder::Decoder,
     dqt::SeaDequantTab,
     encoder_cbr::CbrEncoder,
     encoder_vbr::VbrEncoder,
@@ -95,7 +96,8 @@ enum ActiveEncoder {
 
 pub struct SeaFile {
     pub header: SeaFileHeader,
-    pub dequant_tab: SeaDequantTab,
+
+    decoder: Option<Decoder>,
 
     encoder: Option<ActiveEncoder>,
     encoder_settings: Option<EncoderSettings>,
@@ -108,6 +110,7 @@ impl SeaFile {
     ) -> Result<Self, SeaError> {
         Ok(SeaFile {
             header: header.clone(),
+            decoder: None,
             encoder: if encoder_settings.vbr {
                 let vbr_encoder = VbrEncoder::new(&header, &encoder_settings.clone());
                 Some(ActiveEncoder::Vbr(vbr_encoder))
@@ -116,7 +119,6 @@ impl SeaFile {
                 Some(ActiveEncoder::Cbr(cbr_encoder))
             },
             encoder_settings: Some(encoder_settings.clone()),
-            dequant_tab: SeaDequantTab::init(encoder_settings.scale_factor_bits as usize),
         })
     }
 
@@ -125,9 +127,9 @@ impl SeaFile {
 
         Ok(SeaFile {
             header,
+            decoder: None,
             encoder: None,
             encoder_settings: None,
-            dequant_tab: SeaDequantTab::init(0),
         })
     }
 
@@ -141,8 +143,8 @@ impl SeaFile {
         };
 
         let encoded = match encoder {
-            ActiveEncoder::Cbr(encoder) => encoder.encode(samples, &mut self.dequant_tab),
-            ActiveEncoder::Vbr(encoder) => encoder.encode(samples, &mut self.dequant_tab),
+            ActiveEncoder::Cbr(encoder) => encoder.encode(samples),
+            ActiveEncoder::Vbr(encoder) => encoder.encode(samples),
         };
 
         let chunk = SeaChunk::new(
@@ -168,24 +170,29 @@ impl SeaFile {
         Ok(output)
     }
 
-    pub fn chunk_from_reader<R: io::Read>(
+    pub fn samples_from_reader<R: io::Read>(
         &mut self,
         reader: &mut R,
         remaining_frames: Option<usize>,
-    ) -> Result<Option<SeaChunk>, SeaError> {
+    ) -> Result<Option<Vec<i16>>, SeaError> {
         let encoded = read_max_or_zero(reader, self.header.chunk_size as usize)?;
         if encoded.len() == 0 {
             return Ok(None);
         }
 
-        let chunk = SeaChunk::from_slice(
-            &encoded,
-            &self.header,
-            remaining_frames,
-            &mut self.dequant_tab,
-        );
+        let chunk = SeaChunk::from_slice(&encoded, &self.header, remaining_frames);
+
         match chunk {
-            Ok(chunk) => Ok(Some(chunk)),
+            Ok(chunk) => {
+                if self.decoder.is_none() {
+                    self.decoder = Some(Decoder::init(
+                        self.header.channels as usize,
+                        chunk.scale_factor_bits as usize,
+                    ));
+                }
+                let decoded = self.decoder.as_mut().unwrap().decode(&chunk);
+                Ok(Some(decoded))
+            }
             Err(err) => Err(err),
         }
     }

@@ -39,13 +39,12 @@ where
         } else {
             None
         };
-        let chunk_res = self
+        let reader_res = self
             .file
-            .chunk_from_reader(&mut self.reader, remaining_frames)?;
+            .samples_from_reader(&mut self.reader, remaining_frames)?;
 
-        match chunk_res {
-            Some(chunk) => {
-                let samples = chunk.decode(&mut self.file.dequant_tab);
+        match reader_res {
+            Some(samples) => {
                 self.frames_read += samples.len() / self.file.header.channels as usize;
                 let samples_u8: &[u8] = cast_slice(&samples);
                 self.writer.write_all(&samples_u8)?;

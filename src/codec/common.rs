@@ -133,5 +133,5 @@ pub struct EncodedSamples {
 }
 
 pub trait SeaEncoderTrait {
-    fn encode(&mut self, input_slice: &[i16], dequant_tab: &mut SeaDequantTab) -> EncodedSamples;
+    fn encode(&mut self, input_slice: &[i16]) -> EncodedSamples;
 }
