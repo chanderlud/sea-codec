@@ -9,6 +9,7 @@ use crate::{
 };
 
 use super::{
+    chunk::SeaChunkType,
     common::{
         read_u16_le, read_u32_be, read_u32_le, read_u8, SeaEncoderTrait, SeaError, SEAC_MAGIC,
     },
@@ -190,7 +191,11 @@ impl SeaFile {
                         chunk.scale_factor_bits as usize,
                     ));
                 }
-                let decoded = self.decoder.as_mut().unwrap().decode(&chunk);
+                let decoder = self.decoder.as_mut().unwrap();
+                let decoded = match chunk.chunk_type {
+                    SeaChunkType::CBR => decoder.decode_cbr(&chunk),
+                    SeaChunkType::VBR => decoder.decode_vbr(&chunk),
+                };
                 Ok(Some(decoded))
             }
             Err(err) => Err(err),
