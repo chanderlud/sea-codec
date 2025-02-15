@@ -31,20 +31,23 @@ impl Decoder {
 
         let dqts: &Vec<Vec<i32>> = &self.dequant_tab.get_dqt(chunk.residual_size as usize);
 
-        for (frame_index, channel_residuals) in
-            chunk.residuals.chunks_exact(self.channels).enumerate()
+        for (scale_factor_index, subchunk_residuals) in chunk
+            .residuals
+            .chunks(self.channels * chunk.scale_factor_frames as usize)
+            .enumerate()
         {
-            let scale_factor_index =
-                (frame_index / chunk.scale_factor_frames as usize) * self.channels;
+            let scale_factors = &chunk.scale_factors[scale_factor_index * self.channels..];
 
-            for (channel_index, residual) in channel_residuals.iter().enumerate() {
-                let scale_factor = chunk.scale_factors[scale_factor_index + channel_index];
-                let predicted = lms[channel_index].predict();
-                let quantized: usize = *residual as usize;
-                let dequantized = dqts[scale_factor as usize][quantized];
-                let reconstructed = clamp_i16(predicted + dequantized);
-                output.push(reconstructed);
-                lms[channel_index].update(reconstructed as i16, dequantized);
+            for channel_residuals in subchunk_residuals.chunks_exact(self.channels) {
+                for (channel_index, residual) in channel_residuals.iter().enumerate() {
+                    let scale_factor = scale_factors[channel_index];
+                    let predicted = lms[channel_index].predict();
+                    let quantized: usize = *residual as usize;
+                    let dequantized = dqts[scale_factor as usize][quantized];
+                    let reconstructed = clamp_i16(predicted + dequantized);
+                    output.push(reconstructed);
+                    lms[channel_index].update(reconstructed as i16, dequantized);
+                }
             }
         }
 
