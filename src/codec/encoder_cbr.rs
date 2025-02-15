@@ -1,8 +1,6 @@
 use super::{
-    common::{
-        get_residuals_with_best_scalefactor, EncodedSamples, SeaEncoderTrait, SeaResidualSize,
-        SEA_MAX_CHANNELS,
-    },
+    base_encoder::BaseEncoder,
+    common::{EncodedSamples, SeaEncoderTrait, SeaResidualSize, SEA_MAX_CHANNELS},
     dqt::SeaDequantTab,
     encoder::EncoderSettings,
     file::SeaFileHeader,
@@ -16,6 +14,7 @@ pub struct CbrEncoder {
     scale_factor_frames: u8,
     scale_factor_bits: u8,
     prev_scalefactor: [i32; SEA_MAX_CHANNELS as usize],
+    base_encoder: BaseEncoder,
     pub lms: Vec<SeaLMS>,
 }
 
@@ -27,6 +26,7 @@ impl CbrEncoder {
             scale_factor_frames: encoder_settings.scale_factor_frames,
             scale_factor_bits: encoder_settings.scale_factor_bits,
             prev_scalefactor: [0; SEA_MAX_CHANNELS as usize],
+            base_encoder: BaseEncoder::new(),
             lms: SeaLMS::init_vec(file_header.channels as u32),
         }
     }
@@ -49,10 +49,13 @@ impl SeaEncoderTrait for CbrEncoder {
         let scalefactor_reciprocals =
             dequant_tab.get_scalefactor_reciprocals(self.residual_size as usize);
 
+        let best_residual_bits: &mut [u8] =
+            &mut vec![0u8; slice_size / self.file_header.channels as usize];
+
         for (slice_index, input_slice) in samples.chunks(slice_size).enumerate() {
             for channel_offset in 0..self.file_header.channels as usize {
-                let (_best_rank, best_residuals, best_lms, best_scalefactor) =
-                    get_residuals_with_best_scalefactor(
+                let (_best_rank, best_lms, best_scalefactor) =
+                    self.base_encoder.get_residuals_with_best_scalefactor(
                         self.file_header.channels as usize,
                         quant_tab,
                         dqt,
@@ -62,17 +65,19 @@ impl SeaEncoderTrait for CbrEncoder {
                         &self.lms[channel_offset],
                         self.residual_size,
                         self.scale_factor_bits,
+                        best_residual_bits,
                     );
 
                 self.prev_scalefactor[channel_offset] = best_scalefactor;
                 self.lms[channel_offset] = best_lms;
 
                 scale_factors.push(best_scalefactor as u8);
+
                 // residuals need to be interleaved
-                for i in 0..best_residuals.len() {
+                for i in 0..best_residual_bits.len() {
                     residuals[slice_index * slice_size
                         + i * self.file_header.channels as usize
-                        + channel_offset] = best_residuals[i];
+                        + channel_offset] = best_residual_bits[i];
                 }
             }
         }

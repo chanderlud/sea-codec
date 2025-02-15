@@ -9,6 +9,13 @@ pub struct SeaLMS {
 const FLOATING_BITS: usize = 3;
 
 impl SeaLMS {
+    pub fn new() -> Self {
+        Self {
+            history: [0; LMS_LEN],
+            weights: [0; LMS_LEN],
+        }
+    }
+
     pub fn init_vec(channels: u32) -> Vec<SeaLMS> {
         let mut lms_vec = Vec::with_capacity(channels as usize);
         for _ in 0..channels {

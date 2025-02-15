@@ -1,4 +1,4 @@
-# SEA - Simple Embedded Audio Codec
+# SEA - Simple Embedded Audio Codec - WIP
 
 This is a low complexity, lossy audio codec for embedded devices, inspired by the QOA codec.
 

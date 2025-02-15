@@ -1,3 +1,4 @@
+mod base_encoder;
 mod bits;
 mod chunk;
 mod common;
