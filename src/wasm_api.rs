@@ -43,7 +43,7 @@ pub extern "C" fn wasm_sea_encode(
     output_buffer: *mut u8,
     output_length: usize,
 ) -> usize {
-    use crate::codec::encoder::EncoderSettings;
+    use crate::encoder::EncoderSettings;
     use crate::sea_encode;
 
     let input_samples = unsafe { std::slice::from_raw_parts(input_samples, input_length / 2) };
