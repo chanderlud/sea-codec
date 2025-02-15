@@ -1,11 +1,21 @@
+use std::mem;
+
 use super::{
     common::{clamp_i16, SeaResidualSize},
-    lms::{SeaLMS, LMS_LEN},
+    dqt::SeaDequantTab,
+    lms::SeaLMS,
     qt::SeaQuantTab,
 };
 
 pub struct BaseEncoder {
+    channels: usize,
+    scale_factor_bits: usize,
+
     current_residuals: Vec<u8>,
+    prev_scalefactor: Vec<i32>,
+    best_residual_bits: Vec<u8>,
+    dequant_tab: SeaDequantTab,
+    quant_tab: SeaQuantTab,
 }
 
 #[inline(always)]
@@ -15,27 +25,35 @@ pub fn sea_div(v: i32, scalefactor_reciprocal: i64) -> i32 {
 }
 
 impl BaseEncoder {
-    pub fn new() -> Self {
+    pub fn new(channels: usize, scale_factor_bits: usize) -> Self {
         Self {
+            channels,
+            scale_factor_bits,
             current_residuals: Vec::new(),
+            prev_scalefactor: vec![0; channels],
+            best_residual_bits: Vec::new(),
+            dequant_tab: SeaDequantTab::init(scale_factor_bits),
+            quant_tab: SeaQuantTab::init(),
         }
     }
 
     fn calculate_residuals(
-        &mut self,
+        &self,
         channels: usize,
         dequant_tab: &[i32],
-        quant_tab: &SeaQuantTab,
         samples: &[i16],
         scalefactor: i32,
         lms: &mut SeaLMS,
         best_rank: u64, // provided as optimization, can be u64::MAX if omitted
         residual_size: SeaResidualSize,
         scalefactor_reciprocals: &[i32],
+        current_residuals: &mut [u8],
     ) -> u64 {
         let mut current_rank: u64 = 0;
 
         let clamp_limit = residual_size.to_binary_combinations() as i32;
+
+        let quant_tab = &self.quant_tab;
 
         let quant_tab_offset = clamp_limit + quant_tab.offsets[residual_size as usize] as i32;
 
@@ -63,35 +81,32 @@ impl BaseEncoder {
             }
 
             lms.update(reconstructed, dequantized);
-            self.current_residuals[index] = quantized;
+            current_residuals[index] = quantized;
         }
 
         current_rank
     }
 
     pub fn get_residuals_with_best_scalefactor(
-        &mut self,
+        &self,
         channels: usize,
-        quant_tab: &SeaQuantTab,
         dequant_tab: &Vec<Vec<i32>>,
         scalefactor_reciprocals: &[i32],
         samples: &[i16],
         prev_scalefactor: i32, // provided as optimization, can be 0
         ref_lms: &SeaLMS,
         residual_size: SeaResidualSize,
-        scale_factor_bits: u8,
         best_residual_bits: &mut [u8],
+        current_residuals: &mut [u8],
     ) -> (u64, SeaLMS, i32) {
         let mut best_rank: u64 = u64::MAX;
-
-        self.current_residuals.resize(best_residual_bits.len(), 0);
 
         let mut best_lms = SeaLMS::new();
         let mut best_scalefactor: i32 = 0;
 
         let mut current_lms: SeaLMS = ref_lms.clone();
 
-        let scalefactor_end = 1 << scale_factor_bits;
+        let scalefactor_end = 1 << self.scale_factor_bits;
 
         for sfi in 0..scalefactor_end {
             let scalefactor: i32 = (sfi + prev_scalefactor) % scalefactor_end;
@@ -103,24 +118,71 @@ impl BaseEncoder {
             let current_rank = self.calculate_residuals(
                 channels,
                 dqt,
-                quant_tab,
                 &samples,
                 scalefactor,
                 &mut current_lms,
                 best_rank,
                 residual_size,
                 &scalefactor_reciprocals,
+                current_residuals,
             );
 
             if current_rank < best_rank {
                 best_rank = current_rank;
-                best_residual_bits[..self.current_residuals.len()]
-                    .clone_from_slice(&self.current_residuals);
+                best_residual_bits[..current_residuals.len()].clone_from_slice(&current_residuals);
                 best_lms.clone_from(&current_lms);
                 best_scalefactor = scalefactor;
             }
         }
 
         (best_rank, best_lms, best_scalefactor)
+    }
+
+    pub fn get_residuals_for_chunk(
+        &mut self,
+        dequant_tab: &Vec<Vec<i32>>,
+        samples: &[i16],
+        lms: &mut Vec<SeaLMS>,
+        residual_size: &Vec<SeaResidualSize>,
+        scale_factors: &mut [u8],
+        residuals: &mut [u8],
+    ) {
+        let mut best_residual_bits = mem::take(&mut self.best_residual_bits);
+        best_residual_bits.resize(samples.len() / self.channels, 0);
+
+        let mut current_residuals = mem::take(&mut self.current_residuals);
+        current_residuals.resize(best_residual_bits.len(), 0);
+
+        for channel_offset in 0..self.channels as usize {
+            let scalefactor_reciprocals = self
+                .dequant_tab
+                .get_scalefactor_reciprocals(residual_size[channel_offset] as usize);
+
+            let (_best_rank, best_lms, best_scalefactor) = self
+                .get_residuals_with_best_scalefactor(
+                    self.channels,
+                    dequant_tab,
+                    scalefactor_reciprocals,
+                    &samples[channel_offset..],
+                    self.prev_scalefactor[channel_offset] as i32,
+                    &lms[channel_offset],
+                    residual_size[channel_offset],
+                    &mut best_residual_bits,
+                    &mut current_residuals,
+                );
+
+            self.prev_scalefactor[channel_offset] = best_scalefactor;
+            lms[channel_offset] = best_lms;
+
+            scale_factors[channel_offset] = best_scalefactor as u8;
+
+            // residuals need to be interleaved
+            for i in 0..best_residual_bits.len() {
+                residuals[i * self.channels as usize + channel_offset] = best_residual_bits[i];
+            }
+        }
+
+        self.best_residual_bits = best_residual_bits;
+        self.current_residuals = current_residuals;
     }
 }

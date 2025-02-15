@@ -31,7 +31,10 @@ impl VbrEncoder {
             prev_scalefactor: [0; SEA_MAX_CHANNELS as usize],
             lms: SeaLMS::init_vec(file_header.channels as u32),
             scale_factor_frames: encoder_settings.scale_factor_frames,
-            base_encoder: BaseEncoder::new(),
+            base_encoder: BaseEncoder::new(
+                file_header.channels as usize,
+                encoder_settings.scale_factor_bits as usize,
+            ),
             vbr_target_bitrate: Self::get_normalized_vbr_bitrate(encoder_settings),
         }
     }
@@ -135,12 +138,7 @@ impl VbrEncoder {
         residual_sizes
     }
 
-    fn analyze(
-        &mut self,
-        input_slice: &[i16],
-        quant_tab: &SeaQuantTab,
-        dequant_tab: &mut SeaDequantTab,
-    ) -> Vec<u8> {
+    fn analyze(&mut self, input_slice: &[i16], dequant_tab: &mut SeaDequantTab) -> Vec<u8> {
         let mut errors: Vec<u64> = Vec::with_capacity(input_slice.len());
 
         let analyze_residual_size = SeaResidualSize::from(self.vbr_target_bitrate as u8 + 1);
@@ -160,23 +158,21 @@ impl VbrEncoder {
 
         for (_, input_slice) in input_slice.chunks(slice_size).enumerate() {
             for channel_offset in 0..self.file_header.channels as usize {
-                let (_best_rank, best_lms, best_scalefactor) =
-                    self.base_encoder.get_residuals_with_best_scalefactor(
-                        self.file_header.channels as usize,
-                        quant_tab,
-                        dqt,
-                        scalefactor_reciprocals,
-                        &input_slice[channel_offset..],
-                        prev_scalefactor[channel_offset],
-                        &lms[channel_offset],
-                        analyze_residual_size,
-                        self.scale_factor_bits,
-                        best_residual_bits,
-                    );
+                // let (_best_rank, best_lms, best_scalefactor) =
+                //     self.base_encoder.get_residuals_with_best_scalefactor(
+                //         self.file_header.channels as usize,
+                //         dqt,
+                //         scalefactor_reciprocals,
+                //         &input_slice[channel_offset..],
+                //         prev_scalefactor[channel_offset],
+                //         &lms[channel_offset],
+                //         analyze_residual_size,
+                //         best_residual_bits,
+                //     );
 
-                prev_scalefactor[channel_offset] = best_scalefactor;
-                lms[channel_offset] = best_lms;
-                errors.push(_best_rank);
+                // prev_scalefactor[channel_offset] = best_scalefactor;
+                // lms[channel_offset] = best_lms;
+                // errors.push(_best_rank);
             }
         }
 
@@ -185,16 +181,11 @@ impl VbrEncoder {
 }
 
 impl SeaEncoderTrait for VbrEncoder {
-    fn encode(
-        &mut self,
-        samples: &[i16],
-        quant_tab: &SeaQuantTab,
-        dequant_tab: &mut SeaDequantTab,
-    ) -> EncodedSamples {
+    fn encode(&mut self, samples: &[i16], dequant_tab: &mut SeaDequantTab) -> EncodedSamples {
         let mut scale_factors = Vec::<u8>::new();
         let mut residuals = vec![0u8; samples.len()];
 
-        let residual_bits = self.analyze(samples, quant_tab, dequant_tab);
+        let residual_bits = self.analyze(samples, dequant_tab);
 
         let slice_size = self.scale_factor_frames as usize * self.file_header.channels as usize;
 
@@ -203,36 +194,33 @@ impl SeaEncoderTrait for VbrEncoder {
 
         for (slice_index, input_slice) in samples.chunks(slice_size).enumerate() {
             for channel_offset in 0..self.file_header.channels as usize {
-                let dqt: &Vec<Vec<i32>> = dequant_tab.get_dqt(
-                    residual_bits[slice_index * self.file_header.channels as usize + channel_offset]
-                        as usize,
-                );
-                let scalefactor_reciprocals = dequant_tab.get_scalefactor_reciprocals(
-                    residual_bits[slice_index * self.file_header.channels as usize + channel_offset]
-                        as usize,
-                );
+                let residual_size = residual_bits
+                    [slice_index * self.file_header.channels as usize + channel_offset]
+                    as usize;
 
-                let (_best_rank, best_lms, best_scalefactor) =
-                    self.base_encoder.get_residuals_with_best_scalefactor(
-                        self.file_header.channels as usize,
-                        quant_tab,
-                        dqt,
-                        scalefactor_reciprocals,
-                        &input_slice[channel_offset..],
-                        self.prev_scalefactor[channel_offset] as i32,
-                        &self.lms[channel_offset],
-                        SeaResidualSize::from(
-                            residual_bits
-                                [slice_index * self.file_header.channels as usize + channel_offset],
-                        ),
-                        self.scale_factor_bits,
-                        best_residual_bits,
-                    );
+                let dqt: &Vec<Vec<i32>> = dequant_tab.get_dqt(residual_size);
+                let scalefactor_reciprocals: &Vec<i32> =
+                    dequant_tab.get_scalefactor_reciprocals(residual_size);
 
-                self.prev_scalefactor[channel_offset] = best_scalefactor;
-                self.lms[channel_offset] = best_lms;
+                // let (_best_rank, best_lms, best_scalefactor) =
+                //     self.base_encoder.get_residuals_with_best_scalefactor(
+                //         self.file_header.channels as usize,
+                //         dqt,
+                //         scalefactor_reciprocals,
+                //         &input_slice[channel_offset..],
+                //         self.prev_scalefactor[channel_offset] as i32,
+                //         &self.lms[channel_offset],
+                //         SeaResidualSize::from(
+                //             residual_bits
+                //                 [slice_index * self.file_header.channels as usize + channel_offset],
+                //         ),
+                //         best_residual_bits,
+                //     );
 
-                scale_factors.push(best_scalefactor as u8);
+                // self.prev_scalefactor[channel_offset] = best_scalefactor;
+                // self.lms[channel_offset] = best_lms;
+
+                // scale_factors.push(best_scalefactor as u8);
                 // residuals need to be interleaved
                 for i in 0..best_residual_bits.len() {
                     residuals[slice_index * slice_size

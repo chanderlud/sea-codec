@@ -1,13 +1,9 @@
 use std::io;
 
-use super::{
-    dqt::SeaDequantTab,
-    lms::{SeaLMS, LMS_LEN},
-    qt::SeaQuantTab,
-};
+use super::dqt::SeaDequantTab;
 
 pub const SEAC_MAGIC: u32 = u32::from_be_bytes(*b"seac"); // 0x73 0x65 0x61 0x63
-pub const SEA_MAX_CHANNELS: u8 = 8;
+pub const SEA_MAX_CHANNELS: u8 = 32;
 
 #[inline(always)]
 pub fn clamp_i16(v: i32) -> i16 {
@@ -137,10 +133,5 @@ pub struct EncodedSamples {
 }
 
 pub trait SeaEncoderTrait {
-    fn encode(
-        &mut self,
-        input_slice: &[i16],
-        quant_tab: &SeaQuantTab,
-        dequant_tab: &mut SeaDequantTab,
-    ) -> EncodedSamples;
+    fn encode(&mut self, input_slice: &[i16], dequant_tab: &mut SeaDequantTab) -> EncodedSamples;
 }
