@@ -35,15 +35,6 @@ impl SeaDequantTab {
         self.cached_reciprocals =
             array::from_fn(|i| Self::generate_reciprocal(scale_factor_bits, i));
         self.cached_dqt = array::from_fn(|i: usize| Self::generate_dqt(scale_factor_bits, i));
-
-        // count i32 values in cache_dqt
-        let mut count = 0;
-        for i in 0..self.cached_dqt.len() {
-            for j in 0..self.cached_dqt[i].len() {
-                count += self.cached_dqt[i][j].len();
-            }
-        }
-        println!("count of cached_dqt: {:?} {}", count, scale_factor_bits);
     }
 
     fn get_ideal_pow_factor(scale_factor_bits: usize, residual_bits: usize) -> f32 {

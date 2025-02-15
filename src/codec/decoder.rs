@@ -38,7 +38,7 @@ impl Decoder {
         {
             let scale_factors = &chunk.scale_factors[scale_factor_index * self.channels..];
 
-            for channel_residuals in subchunk_residuals.chunks_exact(self.channels) {
+            for channel_residuals in subchunk_residuals.chunks(self.channels) {
                 for (channel_index, residual) in channel_residuals.iter().enumerate() {
                     let scale_factor = scale_factors[channel_index];
                     let predicted = lms[channel_index].predict();
@@ -66,6 +66,8 @@ impl Decoder {
             .map(|i| self.dequant_tab.get_dqt(i).clone())
             .collect();
 
+        // TODO copy frame step from cbr
+        todo!();
         for (frame_index, channel_residuals) in
             chunk.residuals.chunks_exact(self.channels).enumerate()
         {
