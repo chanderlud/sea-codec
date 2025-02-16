@@ -9,6 +9,9 @@
         font-family: Arial, sans-serif;
         margin: 20px;
       }
+      a {
+        color: #0000ff;
+      }
       .container {
         display: flex;
         gap: 20px;
@@ -59,11 +62,14 @@
     </style>
   </head>
   <body>
-    <h1>Sea Audio Converter</h1>
+    <h2>
+      SEA - Simple Embedded Audio Codec
+      <a href="https://github.com/Daninet/sea-codec" target="_blank">[GitHub]</a>
+    </h2>
     <div class="container">
       <!-- Encoding Column -->
       <div class="column">
-        <h2>Encode to Sea</h2>
+        <h3>Encode to Sea</h3>
         <div class="file-drop" id="encode_drop">
           Drag & drop an audio file (WAV/FLAC/MP3/OGG/OPUS) or click to upload.
         </div>
@@ -102,7 +108,7 @@
 
       <!-- Decoding Column -->
       <div class="column">
-        <h2>Decode from Sea</h2>
+        <h3>Decode from Sea</h3>
         <div class="file-drop" id="decode_drop">Drag & drop a Sea file or click to upload.</div>
         <input type="file" id="decode_input" accept=".sea" class="hidden" />
         <button id="decode_submit">Decode</button>
@@ -113,5 +119,10 @@
     <div id="error"></div>
 
     <script type="module" src="app.mjs"></script>
+
+    <div style="text-align: center">
+      <p><a href="https://github.com/Daninet/sea-codec" target="_blank">[GitHub]</a></p>
+      <p style="text-align: center">Copyright © 2025 Dani Biró</p>
+    </div>
   </body>
 </html>
