@@ -1,4 +1,4 @@
-use std::usize;
+use std::{rc::Rc, usize};
 
 use crate::{
     codec::{bits::BitUnpacker, lms::LMS_LEN},
@@ -8,7 +8,6 @@ use crate::{
 use super::{
     bits::BitPacker,
     common::{SeaError, SeaResidualSize},
-    dqt::SeaDequantTab,
     file::SeaFileHeader,
     lms::SeaLMS,
 };
@@ -21,7 +20,9 @@ pub enum SeaChunkType {
 
 #[derive(Debug)]
 pub struct SeaChunk {
-    pub file_header: SeaFileHeader,
+    pub channels: usize,
+    pub frames_per_chunk: usize,
+
     pub chunk_type: SeaChunkType,
 
     pub scale_factor_bits: u8,
@@ -45,14 +46,17 @@ impl SeaChunk {
         residuals: Vec<u8>,
     ) -> SeaChunk {
         let is_vbr = vbr_residual_sizes.len() > 0;
+        let chunk_type = if is_vbr {
+            SeaChunkType::VBR
+        } else {
+            SeaChunkType::CBR
+        };
 
         SeaChunk {
-            file_header: file_header.clone(),
-            chunk_type: if is_vbr {
-                SeaChunkType::VBR
-            } else {
-                SeaChunkType::CBR
-            },
+            channels: file_header.channels as usize,
+            frames_per_chunk: file_header.frames_per_chunk as usize,
+
+            chunk_type,
             scale_factor_bits: encoder_settings.scale_factor_bits,
             scale_factor_frames: encoder_settings.scale_factor_frames,
             residual_size: SeaResidualSize::from(encoder_settings.residual_bits.floor() as u8),
@@ -195,7 +199,9 @@ impl SeaChunk {
         };
 
         Ok(Self {
-            file_header: file_header.clone(),
+            channels: file_header.channels as usize,
+            frames_per_chunk: file_header.frames_per_chunk as usize,
+
             chunk_type,
             scale_factor_bits,
             scale_factor_frames,
@@ -211,9 +217,7 @@ impl SeaChunk {
     fn serialize_header(&self) -> [u8; 4] {
         assert!(self.scale_factor_bits > 0);
         assert!(self.scale_factor_frames > 0);
-        assert!(
-            self.file_header.frames_per_chunk as usize % self.scale_factor_frames as usize == 0
-        );
+        assert!(self.frames_per_chunk as usize % self.scale_factor_frames as usize == 0);
 
         [
             self.chunk_type as u8,
@@ -224,7 +228,7 @@ impl SeaChunk {
     }
 
     fn serialize_lms(&self) -> Vec<u8> {
-        assert_eq!(self.file_header.channels as usize, self.lms.len());
+        assert_eq!(self.channels, self.lms.len());
 
         self.lms
             .iter()
@@ -254,11 +258,8 @@ impl SeaChunk {
         if matches!(self.chunk_type, SeaChunkType::VBR) {
             let mut vbr_residual_index = 0;
             let mut frames_written_since_update = 0;
-            for residual in self
-                .residuals
-                .chunks_exact(self.file_header.channels as usize)
-            {
-                for channel_index in 0..self.file_header.channels as usize {
+            for residual in self.residuals.chunks_exact(self.channels) {
+                for channel_index in 0..self.channels {
                     packer.push(
                         residual[channel_index] as u32,
                         self.vbr_residual_sizes[vbr_residual_index + channel_index] as u8,
@@ -266,7 +267,7 @@ impl SeaChunk {
                 }
                 frames_written_since_update += 1;
                 if frames_written_since_update == self.scale_factor_frames {
-                    vbr_residual_index += self.file_header.channels as usize;
+                    vbr_residual_index += self.channels;
                     frames_written_since_update = 0;
                 }
             }

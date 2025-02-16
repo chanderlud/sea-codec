@@ -147,6 +147,7 @@ impl EncoderBase {
         residual_size: &Vec<SeaResidualSize>,
         scale_factors: &mut [u8],
         residuals: &mut [u8],
+        ranks: &mut [u64],
     ) {
         let mut best_residual_bits = mem::take(&mut self.best_residual_bits);
         best_residual_bits.resize(samples.len() / self.channels, 0);
@@ -163,25 +164,25 @@ impl EncoderBase {
                 .dequant_tab
                 .get_scalefactor_reciprocals(residual_size[channel_offset] as usize);
 
-            let (_best_rank, best_lms, best_scalefactor) = self
-                .get_residuals_with_best_scalefactor(
-                    self.channels,
-                    dqt,
-                    scalefactor_reciprocals,
-                    &samples[channel_offset..],
-                    self.prev_scalefactor[channel_offset] as i32,
-                    &self.lms[channel_offset],
-                    residual_size[channel_offset],
-                    &mut best_residual_bits,
-                    &mut current_residuals,
-                );
+            let (best_rank, best_lms, best_scalefactor) = self.get_residuals_with_best_scalefactor(
+                self.channels,
+                dqt,
+                scalefactor_reciprocals,
+                &samples[channel_offset..],
+                self.prev_scalefactor[channel_offset] as i32,
+                &self.lms[channel_offset],
+                residual_size[channel_offset],
+                &mut best_residual_bits,
+                &mut current_residuals,
+            );
 
             self.prev_scalefactor[channel_offset] = best_scalefactor;
             self.lms[channel_offset] = best_lms;
 
             scale_factors[channel_offset] = best_scalefactor as u8;
+            ranks[channel_offset] = best_rank;
 
-            // residuals need to be interleaved
+            // interleave output
             for i in 0..best_residual_bits.len() {
                 residuals[i * self.channels as usize + channel_offset] = best_residual_bits[i];
             }

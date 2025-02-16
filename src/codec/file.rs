@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     io::{self},
     rc::Rc,
 };
@@ -14,7 +15,6 @@ use super::{
         read_u16_le, read_u32_be, read_u32_le, read_u8, SeaEncoderTrait, SeaError, SEAC_MAGIC,
     },
     decoder::Decoder,
-    dqt::SeaDequantTab,
     encoder_cbr::CbrEncoder,
     encoder_vbr::VbrEncoder,
 };
@@ -72,6 +72,10 @@ impl SeaFileHeader {
         Ok(res)
     }
 
+    pub fn set_total_frames(&mut self, total_frames: u32) {
+        self.total_frames = total_frames;
+    }
+
     pub fn serialize(&self) -> Vec<u8> {
         let mut output = Vec::new();
 
@@ -109,16 +113,18 @@ impl SeaFile {
         header: SeaFileHeader,
         encoder_settings: &EncoderSettings,
     ) -> Result<Self, SeaError> {
+        let encoder = if encoder_settings.vbr {
+            let vbr_encoder = VbrEncoder::new(&header, &encoder_settings.clone());
+            Some(ActiveEncoder::Vbr(vbr_encoder))
+        } else {
+            let cbr_encoder = CbrEncoder::new(&header, &encoder_settings.clone());
+            Some(ActiveEncoder::Cbr(cbr_encoder))
+        };
+
         Ok(SeaFile {
-            header: header.clone(),
+            header,
             decoder: None,
-            encoder: if encoder_settings.vbr {
-                let vbr_encoder = VbrEncoder::new(&header, &encoder_settings.clone());
-                Some(ActiveEncoder::Vbr(vbr_encoder))
-            } else {
-                let cbr_encoder = CbrEncoder::new(&header, &encoder_settings.clone());
-                Some(ActiveEncoder::Cbr(cbr_encoder))
-            },
+            encoder,
             encoder_settings: Some(encoder_settings.clone()),
         })
     }
@@ -140,7 +146,7 @@ impl SeaFile {
 
         let initial_lms = match encoder {
             ActiveEncoder::Cbr(encoder) => encoder.get_lms().clone(),
-            ActiveEncoder::Vbr(encoder) => encoder.lms.clone(),
+            ActiveEncoder::Vbr(encoder) => encoder.get_lms().clone(),
         };
 
         let encoded = match encoder {
@@ -161,6 +167,7 @@ impl SeaFile {
         if self.header.chunk_size == 0 {
             self.header.chunk_size = output.len() as u16;
         }
+
         let full_samples_len =
             self.header.frames_per_chunk as usize * self.header.channels as usize;
 
