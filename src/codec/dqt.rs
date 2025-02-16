@@ -129,11 +129,3 @@ impl SeaDequantTab {
         &self.cached_dqt[residual_bits as usize]
     }
 }
-
-// static SEA_DEQUANT_TAB: OnceLock<SeaDequantTab> = OnceLock::new();
-
-// pub fn get_sea_dequant_tab(scale_factor_bits: usize) -> &'static SeaDequantTab {
-//     let dqt = SEA_DEQUANT_TAB.get_or_init(|| SeaDequantTab::init(scale_factor_bits));
-//     dqt.set_scalefactor_bits(scale_factor_bits);
-//     dqt
-// }
