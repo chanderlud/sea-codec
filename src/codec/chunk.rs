@@ -1,4 +1,4 @@
-use std::{rc::Rc, usize};
+use std::usize;
 
 use crate::{
     codec::{bits::BitUnpacker, lms::LMS_LEN},
