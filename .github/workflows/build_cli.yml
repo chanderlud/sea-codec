@@ -45,4 +45,5 @@ jobs:
         uses: houseabsolute/actions-rust-release@v0
         with:
           executable-name: seaconv
+          changes-file: ""
           target: ${{ matrix.platform.target }}
