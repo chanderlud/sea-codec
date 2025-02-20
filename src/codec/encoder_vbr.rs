@@ -150,9 +150,9 @@ impl VbrEncoder {
 
         let mut errors = vec![
             0u64;
-            input_slice
-                .len()
+            (input_slice.len() / self.channels)
                 .div_ceil(self.scale_factor_frames as usize)
+                * self.channels
         ];
 
         for (slice_index, input_slice) in input_slice.chunks(slice_size).enumerate() {
@@ -173,8 +173,12 @@ impl VbrEncoder {
 
 impl SeaEncoderTrait for VbrEncoder {
     fn encode(&mut self, samples: &[i16]) -> EncodedSamples {
-        let mut scale_factors =
-            vec![0u8; samples.len().div_ceil(self.scale_factor_frames as usize)];
+        let mut scale_factors = vec![
+            0u8;
+            (samples.len() / self.channels)
+                .div_ceil(self.scale_factor_frames as usize)
+                * self.channels
+        ];
 
         let mut residuals: Vec<u8> = vec![0u8; samples.len()];
 

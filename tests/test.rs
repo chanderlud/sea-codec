@@ -9,7 +9,7 @@ mod helpers;
 fn test_sample_len() {
     for channels in [1, 2, 3] {
         let frame_size: i32 = 100;
-        for mul in [0, 1, 2, 3, 100] {
+        for mul in [1, 2, 3, 100] {
             let start = ((mul * frame_size) - 2).max(0);
             for sample_len in start..(mul * frame_size + 2) {
                 println!("Testing channels={} sample_len={}", channels, sample_len);

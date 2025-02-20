@@ -27,7 +27,7 @@ fn encode_decode() {
         residual_bits: RESIDUAL_SIZE,
         scale_factor_frames: 20,
         scale_factor_bits: 4,
-        vbr: true,
+        vbr: false,
         ..Default::default()
     };
 
