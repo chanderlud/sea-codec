@@ -63,8 +63,10 @@ DOM_ENCODE_SUBMIT.addEventListener("click", async () => {
     channels,
   } = await worker.decodeAudioFile(inputArrayBuffer);
 
-  const residual_size = parseInt(DOM_RESIDUAL_SIZE.value);
-  const vbr = false;
+  const vbr = DOM_RESIDUAL_SIZE.value === "vbr";
+  const residual_size = vbr
+    ? parseFloat(DOM_VBR_TARGET_BITRATE.value)
+    : parseInt(DOM_RESIDUAL_SIZE.value);
 
   DOM_ENCODE_SUBMIT.disabled = true;
   DOM_ENCODE_RESULT.innerHTML = "<p>Encoding...</p>";
