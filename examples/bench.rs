@@ -7,7 +7,7 @@ mod wav;
 use std::io::Write;
 use std::{fs, io::BufWriter, path::Path, time::Instant};
 
-use codec::{encoder::EncoderSettings, sea_decode, sea_encode};
+use sea_codec::{encoder::EncoderSettings, sea_decode, sea_encode};
 use wav::{read_wav, write_wav, Wave};
 
 const SAMPLE_NAME: &str = "piano_long";

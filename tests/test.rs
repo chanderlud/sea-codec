@@ -1,7 +1,7 @@
-use codec::encoder::EncoderSettings;
 use helpers::{encode_decode, gen_test_signal, TEST_SAMPLE_RATE};
+use sea_codec::encoder::EncoderSettings;
 
-extern crate codec;
+extern crate sea_codec;
 
 mod helpers;
 

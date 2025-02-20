@@ -1,4 +1,4 @@
-use codec::{encoder::EncoderSettings, sea_decode, sea_encode};
+use sea_codec::{encoder::EncoderSettings, sea_decode, sea_encode};
 
 pub struct EncodeDecodeOutput {
     pub encoded: Vec<u8>,

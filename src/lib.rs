@@ -4,7 +4,7 @@ use bytemuck::cast_slice;
 use decoder::SeaDecoder;
 use encoder::{EncoderSettings, SeaEncoder};
 
-pub mod codec;
+mod codec;
 pub mod decoder;
 pub mod encoder;
 pub mod wasm_api;
