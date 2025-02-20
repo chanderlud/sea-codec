@@ -40,7 +40,8 @@ jobs:
           command: build
           target: ${{ matrix.platform.target }}
           args: "--example=seaconv --locked --release"
-          strip: true
+          strip: false
+
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@v0
         with:
