@@ -31,7 +31,7 @@ jobs:
       - name: Build WASM file
         run: |
           cargo build --release --target wasm32-unknown-unknown
-          cp ./target/wasm32-unknown-unknown/release/codec.wasm ./web/codec.wasm
+          cp ./target/wasm32-unknown-unknown/release/sea_codec.wasm ./web/codec.wasm
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
