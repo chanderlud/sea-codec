@@ -16,6 +16,38 @@ You can test SEA in your browser here: [https://daninet.github.io/sea-codec/](ht
 - **Metadata storage**: Allows embedding additional information.
 - **MIT License**
 
+### CLI tool
+
+You can build it with `cargo build --example seaconv --release` or you can download a pre-built binary from the [releases page](https://github.com/Daninet/sea-codec/releases).
+
+#### Examples
+
+`seaconv.exe input.wav encoded.sea --bitrate 3`
+
+`seaconv.exe encoded.sea decoded.wav`
+
+```
+Usage: seaconv.exe [OPTIONS] <input> <output>
+
+Arguments:
+  <input>   The input file in LPCM LE .wav or .sea format
+  <output>  The output file to save the conversion result (.sea or .wav)
+
+Options:
+  -c, --chunk-size <chunk-size>
+          Sets the number of frames within a chunk [default: 5120]
+  -b, --bitrate <bitrate>
+          Sets the bitrate for the conversion [default: 3]
+  -s, --scalefactor-bits <scalefactor-bits>
+          Sets the bitrate for scale factors [default: 4]
+  -d, --scalefactor-distance <scalefactor-distance>
+          Sets the distance between scale factors in frames [default: 20]
+  -v, --vbr
+          Enables Variable Bit Rate (VBR)
+  -h, --help
+          Print help
+```
+
 # SEA file specification
 
 A SEA file consists of a file header followed by a series of chunks. Samples are stored as 16-bit signed integers in interleaved format. All values are stored in little-endian order.
@@ -91,7 +123,6 @@ struct SEA_CHUNK {
 # Future plans
 
 - **Seeking Support**: Add seeking functionality to the Rust implementation.
-- **CLI Tool**: Develop a command-line tool for easy audio conversion.
 - **Optimization and Benchmarking**: Optimize the implementation and benchmark against other codecs.
 - **C Encoder**: Implement an encoder in C for broader compatibility.
 
