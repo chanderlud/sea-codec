@@ -56,6 +56,9 @@ DOM_ENCODE_SUBMIT.addEventListener("click", async () => {
   const fileInput = DOM_ENCODE_FILE;
   if (!fileInput.files.length) return alert("Please select a file.");
 
+  DOM_ENCODE_SUBMIT.disabled = true;
+  DOM_ENCODE_RESULT.innerHTML = "<p>Encoding...</p>";
+
   const inputArrayBuffer = await readFile(fileInput.files[0]);
   const {
     samples: interleavedInput,
@@ -67,9 +70,6 @@ DOM_ENCODE_SUBMIT.addEventListener("click", async () => {
   const residual_size = vbr
     ? parseFloat(DOM_VBR_TARGET_BITRATE.value)
     : parseInt(DOM_RESIDUAL_SIZE.value);
-
-  DOM_ENCODE_SUBMIT.disabled = true;
-  DOM_ENCODE_RESULT.innerHTML = "<p>Encoding...</p>";
 
   const { encoded, duration: encodeDuration } = await worker.encodeSEA(
     interleavedInput,
@@ -165,7 +165,10 @@ function setupDragAndDrop(dropZone, fileInput) {
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("dragover");
-    fileInput.files = e.dataTransfer.files;
+    if (e.dataTransfer.files.length === 1) {
+      fileInput.files = e.dataTransfer.files;
+      dropZone.textContent = fileInput.files[0].name;
+    }
   });
   dropZone.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", () => {
