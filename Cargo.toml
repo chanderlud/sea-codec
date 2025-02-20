@@ -17,5 +17,4 @@ bytemuck = "1.21.0"
 hound = "3.5.1"
 
 [lib]
-name = "codec"
 crate-type = ["cdylib", "rlib"]
