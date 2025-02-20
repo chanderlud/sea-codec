@@ -42,6 +42,9 @@ jobs:
           args: "--example=seaconv --locked --release"
           strip: false
 
+      - name: Copy examples to parent dir
+        run: cp ./target/${{ matrix.platform.target }}/release/examples/* ./target/${{ matrix.platform.target }}/release/
+
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@v0
         with:
