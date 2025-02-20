@@ -1,7 +1,6 @@
 use std::io;
 
 pub const SEAC_MAGIC: u32 = u32::from_be_bytes(*b"seac"); // 0x73 0x65 0x61 0x63
-pub const SEA_MAX_CHANNELS: u8 = 32;
 
 #[inline(always)]
 pub fn clamp_i16(v: i32) -> i16 {
