@@ -31,14 +31,18 @@ where
     }
 
     pub fn decode_frame(&mut self) -> Result<bool, SeaError> {
-        if (self.file.header.total_frames as usize) <= self.frames_read {
+        if self.file.header.total_frames != 0
+            && (self.file.header.total_frames as usize) <= self.frames_read
+        {
             return Ok(false);
         }
+
         let remaining_frames = if self.file.header.total_frames > 0 {
             Some(self.file.header.total_frames as usize - self.frames_read)
         } else {
             None
         };
+
         let reader_res = self
             .file
             .samples_from_reader(&mut self.reader, remaining_frames)?;
@@ -54,6 +58,10 @@ where
                 return Ok(false);
             }
         }
+    }
+
+    pub fn flush(&mut self) {
+        let _ = self.writer.flush();
     }
 
     pub fn finalize(&mut self) -> Result<(), SeaError> {

@@ -148,6 +148,10 @@ where
         Ok(!eof)
     }
 
+    pub fn flush(&mut self) {
+        let _ = self.writer.flush();
+    }
+
     pub fn finalize(&mut self) -> Result<(), SeaError> {
         self.writer.flush()?;
         self.state = SeaEncoderState::Finished;
