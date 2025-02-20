@@ -19,13 +19,13 @@
 #define SEA_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define SEAC_MAGIC_REV 0x63616573 // 'seac' in little endian
 
-#define DIV_CEIL(a, b) ((a) + (b) - 1) / (b)
-#define CLAMP_I16(x) ((x) > INT16_MAX ? INT16_MAX : ((x) < INT16_MIN ? INT16_MIN : (int16_t)(x)))
+#define SEA_DIV_CEIL(a, b) ((a) + (b) - 1) / (b)
+#define SEA_CLAMP_I16(x) ((x) > INT16_MAX ? INT16_MAX : ((x) < INT16_MIN ? INT16_MIN : (int16_t)(x)))
 
-#define READ_U8(b) (*(*b)++)
-#define READ_I16_LE(b) (*b += 2, (int16_t)((*b)[-2] | ((*b)[-1] << 8)))
-#define READ_U16_LE(b) (*b += 2, (uint16_t)((*b)[-2] | ((*b)[-1] << 8)))
-#define READ_U32_LE(b) (*b += 4, (uint32_t)((*b)[-4] | ((*b)[-3] << 8) | ((*b)[-2] << 16) | ((*b)[-1] << 24)))
+#define SEA_READ_U8(b) (*(*b)++)
+#define SEA_READ_I16_LE(b) (*b += 2, (int16_t)((*b)[-2] | ((*b)[-1] << 8)))
+#define SEA_READ_U16_LE(b) (*b += 2, (uint16_t)((*b)[-2] | ((*b)[-1] << 8)))
+#define SEA_READ_U32_LE(b) (*b += 4, (uint32_t)((*b)[-4] | ((*b)[-3] << 8) | ((*b)[-2] << 16) | ((*b)[-1] << 24)))
 
 typedef struct {
     int32_t history[4];
@@ -39,7 +39,7 @@ static void sea_read_unpack_bits(uint8_t bit_size, const uint8_t** encoded, uint
     uint32_t output_len = 0;
 
     for (int i = 0; i < bytes_to_read; i++) {
-        uint32_t v = (carry << 8) | READ_U8(encoded);
+        uint32_t v = (carry << 8) | SEA_READ_U8(encoded);
         bits_stored += 8;
         while (bits_stored >= bit_size) {
             output[output_len++] = (v >> (bits_stored - bit_size)) & MASKS[bit_size];
@@ -54,7 +54,7 @@ static uint32_t SEA_DQT_COLUMNS = 0;
 static uint32_t SEA_DQT_SCALE_FACTOR_BITS = 0;
 static uint32_t SEA_DQT_RESIDUAL_BITS = 0;
 
-static void alloc_prepare_dqt(uint32_t scale_factor_bits, uint32_t residual_bits)
+static void sea_alloc_prepare_dqt(uint32_t scale_factor_bits, uint32_t residual_bits)
 {
     if (SEA_DQT_SCALE_FACTOR_BITS == scale_factor_bits && SEA_DQT_RESIDUAL_BITS == residual_bits) {
         return;
@@ -127,39 +127,39 @@ static inline void sea_lms_update(SEA_LMS* lms, int16_t sample, int32_t residual
 
 static int sea_read_chunk(const uint8_t** encoded, uint32_t channels, uint32_t frames_in_this_chunk, int16_t** output)
 {
-    uint8_t type = READ_U8(encoded);
+    uint8_t type = SEA_READ_U8(encoded);
     if (type != 0x01) {
         fprintf(stderr, "Only CBR supported\n");
         return 1;
     }
-    uint8_t scale_factor_and_residual_size = READ_U8(encoded);
+    uint8_t scale_factor_and_residual_size = SEA_READ_U8(encoded);
     uint8_t scale_factor_bits = scale_factor_and_residual_size >> 4;
     uint8_t residual_size = scale_factor_and_residual_size & 0xF;
-    uint8_t scale_factor_frames = READ_U8(encoded);
-    uint8_t reserved = READ_U8(encoded);
+    uint8_t scale_factor_frames = SEA_READ_U8(encoded);
+    uint8_t reserved = SEA_READ_U8(encoded);
     if (reserved != 0x5A) {
         fprintf(stderr, "Invalid file\n");
         return 1;
     }
 
-    alloc_prepare_dqt(scale_factor_bits, residual_size);
+    sea_alloc_prepare_dqt(scale_factor_bits, residual_size);
 
     SEA_LMS* lms = (SEA_LMS*)malloc(channels * sizeof(SEA_LMS));
     for (int channel_id = 0; channel_id < channels; channel_id++) {
         for (int j = 0; j < 4; j++) {
-            lms[channel_id].history[j] = READ_I16_LE(encoded);
+            lms[channel_id].history[j] = SEA_READ_I16_LE(encoded);
         }
         for (int j = 0; j < 4; j++) {
-            lms[channel_id].weights[j] = READ_I16_LE(encoded);
+            lms[channel_id].weights[j] = SEA_READ_I16_LE(encoded);
         }
     }
 
-    uint32_t scale_factor_items = DIV_CEIL(frames_in_this_chunk, scale_factor_frames) * channels;
+    uint32_t scale_factor_items = SEA_DIV_CEIL(frames_in_this_chunk, scale_factor_frames) * channels;
     uint8_t* scale_factors = (uint8_t*)malloc(scale_factor_items + 8);
-    uint32_t scale_factor_bytes = DIV_CEIL(scale_factor_items * scale_factor_bits, 8);
+    uint32_t scale_factor_bytes = SEA_DIV_CEIL(scale_factor_items * scale_factor_bits, 8);
     sea_read_unpack_bits(scale_factor_bits, encoded, scale_factor_bytes, scale_factors);
 
-    uint32_t residual_bytes = DIV_CEIL(frames_in_this_chunk * residual_size * channels, 8);
+    uint32_t residual_bytes = SEA_DIV_CEIL(frames_in_this_chunk * residual_size * channels, 8);
     uint8_t* residuals = (uint8_t*)malloc(frames_in_this_chunk * channels + 8);
     sea_read_unpack_bits(residual_size, encoded, residual_bytes, residuals);
 
@@ -172,7 +172,7 @@ static int sea_read_chunk(const uint8_t** encoded, uint32_t channels, uint32_t f
                 int32_t predicted = sea_lms_predict(&lms[channel_index]);
                 uint32_t quantized = (uint32_t)subchunk_residuals[channel_index];
                 int32_t dequantized = SEA_DQT[scale_factor * SEA_DQT_COLUMNS + quantized];
-                int32_t reconstructed = CLAMP_I16(predicted + dequantized);
+                int32_t reconstructed = SEA_CLAMP_I16(predicted + dequantized);
                 **output = reconstructed;
                 *output += 1;
                 sea_lms_update(&lms[channel_index], reconstructed, dequantized);
@@ -190,20 +190,20 @@ int sea_decode(uint8_t* encoded, uint32_t encoded_len, uint32_t* sample_rate, ui
 {
     const uint8_t** encoded_ptr = (const uint8_t**)&encoded;
 
-    uint32_t magic = READ_U32_LE(encoded_ptr);
-    uint8_t version = READ_U8(encoded_ptr);
+    uint32_t magic = SEA_READ_U32_LE(encoded_ptr);
+    uint8_t version = SEA_READ_U8(encoded_ptr);
 
     if (magic != SEAC_MAGIC_REV || version != 1) {
         fprintf(stderr, "Invalid file\n");
         return 1;
     }
 
-    *channels = READ_U8(encoded_ptr);
-    uint16_t chunk_size = READ_U16_LE(encoded_ptr);
-    uint16_t frames_per_chunk = READ_U16_LE(encoded_ptr);
-    *sample_rate = READ_U32_LE(encoded_ptr);
-    *total_frames = READ_U32_LE(encoded_ptr);
-    uint32_t metadata_len = READ_U32_LE(encoded_ptr);
+    *channels = SEA_READ_U8(encoded_ptr);
+    uint16_t chunk_size = SEA_READ_U16_LE(encoded_ptr);
+    uint16_t frames_per_chunk = SEA_READ_U16_LE(encoded_ptr);
+    *sample_rate = SEA_READ_U32_LE(encoded_ptr);
+    *total_frames = SEA_READ_U32_LE(encoded_ptr);
+    uint32_t metadata_len = SEA_READ_U32_LE(encoded_ptr);
     encoded_ptr += metadata_len;
 
     if (output == NULL) {
