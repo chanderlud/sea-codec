@@ -2,8 +2,8 @@ name: Test and Lint Rust Code
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - master
 
 jobs:
   test_and_lint:
