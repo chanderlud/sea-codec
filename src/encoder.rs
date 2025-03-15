@@ -89,7 +89,7 @@ where
         let buffer_size = max_sample_count * std::mem::size_of::<i16>();
         let buffer = read_max_or_zero(&mut self.reader, buffer_size)?;
 
-        if buffer.len() == 0 {
+        if buffer.is_empty() {
             return Ok(Vec::new());
         }
 
@@ -120,9 +120,9 @@ where
             self.file.header.frames_per_chunk as usize * self.file.header.channels as usize;
         let samples_to_read = frames * channels as usize;
         let samples: Vec<i16> = self.read_samples(samples_to_read)?;
-        let eof: bool = samples.len() == 0 || samples.len() < full_size_samples;
+        let eof: bool = samples.is_empty() || samples.len() < full_size_samples;
 
-        if samples.len() > 0 {
+        if !samples.is_empty() {
             let encoded_chunk = self.file.make_chunk(&samples)?;
 
             if eof {

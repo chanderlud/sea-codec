@@ -51,12 +51,10 @@ where
             Some(samples) => {
                 self.frames_read += samples.len() / self.file.header.channels as usize;
                 let samples_u8: &[u8] = cast_slice(&samples);
-                self.writer.write_all(&samples_u8)?;
-                return Ok(true);
+                self.writer.write_all(samples_u8)?;
+                Ok(true)
             }
-            None => {
-                return Ok(false);
-            }
+            None => Ok(false),
         }
     }
 

@@ -38,7 +38,7 @@ impl VbrEncoder {
     }
 
     fn get_normalized_vbr_bitrate(encoder_settings: &EncoderSettings) -> f32 {
-        let mut vbr_bitrate = encoder_settings.residual_bits as f32;
+        let mut vbr_bitrate = encoder_settings.residual_bits;
 
         // compensate lms
         vbr_bitrate -= (LMS_LEN as f32 * 16.0 * 2.0) / encoder_settings.frames_per_chunk as f32;
@@ -128,7 +128,7 @@ impl VbrEncoder {
         }
 
         // count how many times each residual size appears
-        let mut residual_size_counts = vec![0; 9];
+        let mut residual_size_counts = [0; 9];
         for i in 0..errors.len() {
             residual_size_counts[residual_sizes[i] as usize] += 1;
         }
@@ -139,7 +139,7 @@ impl VbrEncoder {
     fn analyze(&mut self, input_slice: &[i16]) -> Vec<u8> {
         let analyze_residual_size = SeaResidualSize::from(self.vbr_target_bitrate as u8 + 1);
 
-        let slice_size = self.scale_factor_frames as usize * self.channels as usize;
+        let slice_size = self.scale_factor_frames as usize * self.channels;
 
         let original_lms = self.base_encoder.lms.clone();
 
@@ -157,7 +157,7 @@ impl VbrEncoder {
 
         for (slice_index, input_slice) in input_slice.chunks(slice_size).enumerate() {
             self.base_encoder.get_residuals_for_chunk(
-                &input_slice,
+                input_slice,
                 &residual_sizes,
                 &mut scale_factors,
                 &mut residuals,

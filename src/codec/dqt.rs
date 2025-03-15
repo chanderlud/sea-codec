@@ -69,7 +69,7 @@ impl SeaDequantTab {
     }
 
     pub fn get_scalefactor_reciprocals(&self, residual_bits: usize) -> &Vec<i32> {
-        &self.cached_reciprocals[residual_bits as usize]
+        &self.cached_reciprocals[residual_bits]
     }
 
     fn gen_dqt_table(residual_bits: usize) -> Vec<f32> {
@@ -86,9 +86,9 @@ impl SeaDequantTab {
         let step_floor = step.floor();
 
         let mut curve = vec![0.0; steps];
-        for i in 1..steps {
+        for (i, item) in curve.iter_mut().enumerate().take(steps).skip(1) {
             let y = 0.5 + i as f32 * step_floor;
-            curve[i] = y;
+            *item = y;
         }
 
         curve[0] = start;
@@ -115,8 +115,8 @@ impl SeaDequantTab {
             output.push(Vec::with_capacity(dqt.len()));
 
             // zig zag pattern decreases quantization error
-            for q in 0..dqt_items {
-                let val = (scale_factors[s] as f32 * dqt[q]).round() as i32;
+            for item in dqt.iter().take(dqt_items) {
+                let val = (scale_factors[s] as f32 * item).round() as i32;
                 output[s].push(val);
                 output[s].push(-val);
             }
@@ -126,6 +126,6 @@ impl SeaDequantTab {
     }
 
     pub fn get_dqt(&self, residual_bits: usize) -> &Vec<Vec<i32>> {
-        &self.cached_dqt[residual_bits as usize]
+        &self.cached_dqt[residual_bits]
     }
 }

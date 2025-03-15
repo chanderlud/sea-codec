@@ -87,7 +87,7 @@ impl SeaFileHeader {
         output.extend_from_slice(&self.total_frames.to_le_bytes());
         let metadata_len_u32 = self.metadata.len() as u32;
         output.extend_from_slice(&metadata_len_u32.to_le_bytes());
-        output.extend_from_slice(&self.metadata.as_bytes());
+        output.extend_from_slice(self.metadata.as_bytes());
 
         output
     }
@@ -156,7 +156,7 @@ impl SeaFile {
         let chunk = SeaChunk::new(
             &self.header,
             &initial_lms,
-            &encoder_settings,
+            encoder_settings,
             encoded.scale_factors,
             encoded.residual_bits,
             encoded.residuals,
@@ -183,7 +183,7 @@ impl SeaFile {
         remaining_frames: Option<usize>,
     ) -> Result<Option<Vec<i16>>, SeaError> {
         let encoded = read_max_or_zero(reader, self.header.chunk_size as usize)?;
-        if encoded.len() == 0 {
+        if encoded.is_empty() {
             return Ok(None);
         }
 
@@ -199,8 +199,8 @@ impl SeaFile {
                 }
                 let decoder = self.decoder.as_mut().unwrap();
                 let decoded = match chunk.chunk_type {
-                    SeaChunkType::CBR => decoder.decode_cbr(&chunk),
-                    SeaChunkType::VBR => decoder.decode_vbr(&chunk),
+                    SeaChunkType::Cbr => decoder.decode_cbr(&chunk),
+                    SeaChunkType::Vbr => decoder.decode_vbr(&chunk),
                 };
                 Ok(Some(decoded))
             }

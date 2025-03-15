@@ -104,9 +104,9 @@ impl BitPacker {
     pub fn push(&mut self, input: u32, bits: u8) {
         debug_assert!(bits <= 8);
         let mask: u32 = (1 << bits as u32) - 1;
-        let value = (input as u32) & mask;
+        let value = (input) & mask;
         debug_assert!(
-            input as u32 == value as u32,
+            input == value,
             "cannot pack value={} into {} bits",
             input,
             bits

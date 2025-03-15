@@ -1,5 +1,3 @@
-use std::usize;
-
 use crate::{
     codec::{bits::BitUnpacker, lms::LMS_LEN},
     encoder::EncoderSettings,
@@ -14,8 +12,8 @@ use super::{
 
 #[derive(Debug, Clone, Copy)]
 pub enum SeaChunkType {
-    CBR = 0x01,
-    VBR = 0x02,
+    Cbr = 0x01,
+    Vbr = 0x02,
 }
 
 #[derive(Debug)]
@@ -39,17 +37,17 @@ pub struct SeaChunk {
 impl SeaChunk {
     pub fn new(
         file_header: &SeaFileHeader,
-        lms: &Vec<SeaLMS>,
+        lms: &[SeaLMS],
         encoder_settings: &EncoderSettings,
         scale_factors: Vec<u8>,
         vbr_residual_sizes: Vec<u8>,
         residuals: Vec<u8>,
     ) -> SeaChunk {
-        let is_vbr = vbr_residual_sizes.len() > 0;
+        let is_vbr = !vbr_residual_sizes.is_empty();
         let chunk_type = if is_vbr {
-            SeaChunkType::VBR
+            SeaChunkType::Vbr
         } else {
-            SeaChunkType::CBR
+            SeaChunkType::Cbr
         };
 
         SeaChunk {
@@ -61,7 +59,7 @@ impl SeaChunk {
             scale_factor_frames: encoder_settings.scale_factor_frames,
             residual_size: SeaResidualSize::from(encoder_settings.residual_bits.floor() as u8),
 
-            lms: lms.clone(),
+            lms: lms.to_owned(),
             scale_factors,
             vbr_residual_sizes,
             residuals,
@@ -81,8 +79,8 @@ impl SeaChunk {
         }
 
         let chunk_type: SeaChunkType = match encoded[0] {
-            0x01 => SeaChunkType::CBR,
-            0x02 => SeaChunkType::VBR,
+            0x01 => SeaChunkType::Cbr,
+            0x02 => SeaChunkType::Vbr,
             _ => return Err(SeaError::InvalidFrame),
         };
 
@@ -118,25 +116,25 @@ impl SeaChunk {
                 &encoded[encoded_index..encoded_index + packed_scale_factor_bytes];
             encoded_index += packed_scale_factor_bytes;
 
-            let mut unpacker = BitUnpacker::new_const_bits(scale_factor_bits as u8);
-            unpacker.process_bytes(&packed_scale_factors);
+            let mut unpacker = BitUnpacker::new_const_bits(scale_factor_bits);
+            unpacker.process_bytes(packed_scale_factors);
             let mut res = unpacker.finish();
             res.resize(scale_factor_items, 0);
             res
         };
 
-        let vbr_residual_sizes: Vec<u8> = if matches!(chunk_type, SeaChunkType::VBR) {
+        let vbr_residual_sizes: Vec<u8> = if matches!(chunk_type, SeaChunkType::Vbr) {
             let packed_vbr_residual_sizes_bytes = (scale_factor_items * 2).div_ceil(8);
             let packed_vbr_residual_sizes =
                 &encoded[encoded_index..encoded_index + packed_vbr_residual_sizes_bytes];
             encoded_index += packed_vbr_residual_sizes_bytes;
 
             let mut unpacker: BitUnpacker = BitUnpacker::new_const_bits(2);
-            unpacker.process_bytes(&packed_vbr_residual_sizes);
+            unpacker.process_bytes(packed_vbr_residual_sizes);
             let mut res = unpacker.finish();
             res.resize(scale_factor_items, 0);
-            for i in 0..res.len() {
-                res[i] += residual_size as u8 - 1;
+            for item in &mut res {
+                *item += residual_size as u8 - 1;
             }
             res
         } else {
@@ -144,12 +142,12 @@ impl SeaChunk {
         };
 
         let residuals: Vec<u8> = {
-            let mut unpacker = if matches!(chunk_type, SeaChunkType::VBR) {
+            let mut unpacker = if matches!(chunk_type, SeaChunkType::Vbr) {
                 let mut bitlengths = Vec::new();
                 for vbr_chunk in vbr_residual_sizes.chunks_exact(file_header.channels as usize) {
                     for _ in 0..scale_factor_frames {
-                        for channel_index in 0..file_header.channels as usize {
-                            bitlengths.push(vbr_chunk[channel_index] as u8);
+                        for item in vbr_chunk.iter().take(file_header.channels as usize) {
+                            bitlengths.push(*item);
                         }
                     }
                 }
@@ -159,7 +157,7 @@ impl SeaChunk {
                 BitUnpacker::new_const_bits(residual_size as u8)
             };
 
-            let packed_residuals_bytes = if matches!(chunk_type, SeaChunkType::VBR) {
+            let packed_residuals_bytes = if matches!(chunk_type, SeaChunkType::Vbr) {
                 let mut residual_bits: u32 = vbr_residual_sizes
                     [..vbr_residual_sizes.len() - file_header.channels as usize]
                     .iter()
@@ -191,7 +189,7 @@ impl SeaChunk {
 
             let packed_residuals = &encoded[encoded_index..encoded_index + packed_residuals_bytes];
 
-            unpacker.process_bytes(&packed_residuals);
+            unpacker.process_bytes(packed_residuals);
 
             let mut res = unpacker.finish();
             res.resize(frames_in_this_chunk * file_header.channels as usize, 0);
@@ -217,11 +215,11 @@ impl SeaChunk {
     fn serialize_header(&self) -> [u8; 4] {
         assert!(self.scale_factor_bits > 0);
         assert!(self.scale_factor_frames > 0);
-        assert!(self.frames_per_chunk as usize % self.scale_factor_frames as usize == 0);
+        assert_eq!(self.frames_per_chunk % self.scale_factor_frames as usize, 0);
 
         [
             self.chunk_type as u8,
-            (self.scale_factor_bits << 4) as u8 | self.residual_size as u8,
+            (self.scale_factor_bits << 4) | self.residual_size as u8,
             self.scale_factor_frames,
             0x5A,
         ]
@@ -255,14 +253,14 @@ impl SeaChunk {
 
     fn serialize_residuals(&self) -> Vec<u8> {
         let mut packer = BitPacker::new();
-        if matches!(self.chunk_type, SeaChunkType::VBR) {
+        if matches!(self.chunk_type, SeaChunkType::Vbr) {
             let mut vbr_residual_index = 0;
             let mut frames_written_since_update = 0;
             for residual in self.residuals.chunks_exact(self.channels) {
-                for channel_index in 0..self.channels {
+                for (channel_index, item) in residual.iter().enumerate().take(self.channels) {
                     packer.push(
-                        residual[channel_index] as u32,
-                        self.vbr_residual_sizes[vbr_residual_index + channel_index] as u8,
+                        *item as u32,
+                        self.vbr_residual_sizes[vbr_residual_index + channel_index],
                     );
                 }
                 frames_written_since_update += 1;
@@ -276,8 +274,7 @@ impl SeaChunk {
                 packer.push(*residual as u32, self.residual_size as u8);
             }
         }
-        let res = packer.finish();
-        res
+        packer.finish()
     }
 
     pub fn serialize(&self) -> Vec<u8> {
@@ -286,7 +283,7 @@ impl SeaChunk {
         output.extend_from_slice(&self.serialize_header());
         output.extend_from_slice(&self.serialize_lms());
         output.extend_from_slice(&self.serialize_scale_factors());
-        if matches!(self.chunk_type, SeaChunkType::VBR) {
+        if matches!(self.chunk_type, SeaChunkType::Vbr) {
             output.extend_from_slice(&self.serialize_vbr_residual_sizes());
         }
         output.extend_from_slice(&self.serialize_residuals());
