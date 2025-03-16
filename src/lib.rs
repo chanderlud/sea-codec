@@ -7,6 +7,7 @@ use encoder::{EncoderSettings, SeaEncoder};
 mod codec;
 pub mod decoder;
 pub mod encoder;
+#[cfg(all(target_arch = "wasm32", feature = "wasm-api"))]
 pub mod wasm_api;
 
 pub fn sea_encode(

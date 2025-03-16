@@ -1,9 +1,7 @@
 extern "C" {
-    #[cfg(target_arch = "wasm32")]
     fn js_error(ptr: *const std::os::raw::c_char);
 }
 
-#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn setup() {
     use std::ffi::CString;
@@ -31,7 +29,6 @@ pub extern "C" fn setup() {
     }));
 }
 
-#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn wasm_sea_encode(
     input_samples: *const i16,
@@ -67,7 +64,6 @@ pub extern "C" fn wasm_sea_encode(
     encoded_data.len()
 }
 
-#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub extern "C" fn wasm_sea_decode(
     encoded: *const u8,
@@ -98,7 +94,6 @@ pub extern "C" fn wasm_sea_decode(
     decoded_data.samples.len() * 2
 }
 
-#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe extern "C" fn allocate(size: usize) -> *mut u8 {
     use std::alloc::{alloc, Layout};
@@ -107,7 +102,6 @@ pub unsafe extern "C" fn allocate(size: usize) -> *mut u8 {
     alloc(layout)
 }
 
-#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe extern "C" fn deallocate(ptr: *mut u8, size: usize) {
     use std::alloc::{dealloc, Layout};
