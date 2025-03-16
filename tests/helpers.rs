@@ -7,7 +7,7 @@ pub struct EncodeDecodeOutput {
 }
 
 pub fn encode_decode(
-    input_samples: &Vec<i16>,
+    input_samples: &[i16],
     sample_rate: u32,
     channels: u32,
     settings: EncoderSettings,
@@ -47,8 +47,8 @@ fn write_sine_wave(signal: &mut [f32], gain: f32, frequency: f32) {
 }
 
 fn signal_chunk(signal: &mut [f32], start_percent: f32, end_percent: f32) -> &mut [f32] {
-    assert!(start_percent >= 0.0 && start_percent <= 1.0);
-    assert!(end_percent >= 0.0 && end_percent <= 1.0);
+    assert!((0.0..=1.0).contains(&start_percent));
+    assert!((0.0..=1.0).contains(&end_percent));
     assert!(start_percent <= end_percent);
 
     let start_index = (signal.len() as f32 * start_percent) as usize;
@@ -98,13 +98,13 @@ pub struct AudioQualityStats {
     pub psnr: f64,
 }
 
-pub fn get_audio_quality(a: &Vec<i16>, b: &Vec<i16>) -> AudioQualityStats {
-    assert!(a.len() == b.len());
+pub fn get_audio_quality(a: &[i16], b: &[i16]) -> AudioQualityStats {
+    assert_eq!(a.len(), b.len());
 
     let mut sum = 0.0f64;
     for i in 0..a.len() {
-        let a_float = (a[i] as f64 / i16::MAX as f64) as f64;
-        let b_float = (b[i] as f64 / i16::MAX as f64) as f64;
+        let a_float = a[i] as f64 / i16::MAX as f64;
+        let b_float = b[i] as f64 / i16::MAX as f64;
         let diff = a_float - b_float;
         sum += diff * diff;
     }

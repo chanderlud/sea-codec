@@ -89,7 +89,7 @@ fn streaming() {
     }
 
     let i16_sea_decoded: &[i16] = cast_slice(&sea_decoded);
-    assert!(i16_sea_decoded.len() > 0);
+    assert!(!i16_sea_decoded.is_empty());
     assert_eq!(
         reference_samples.decoded[..i16_sea_decoded.len()],
         i16_sea_decoded[..]

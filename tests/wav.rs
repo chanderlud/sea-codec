@@ -57,17 +57,17 @@ pub fn write_wav(
 ) -> Result<(), Box<dyn Error>> {
     let spec = WavSpec {
         channels,
-        sample_rate: sample_rate as u32,
+        sample_rate,
         bits_per_sample: 16,
-        sample_format: hound::SampleFormat::Int,
+        sample_format: SampleFormat::Int,
     };
 
     let mut writer: WavWriter<std::io::BufWriter<File>> =
         WavWriter::create(output_path, spec).unwrap();
     // let start = sample.get_start() as usize;
     // let end = sample.get_end() as usize;
-    for i in 0..wave.len() {
-        writer.write_sample(wave[i])?;
+    for item in wave {
+        writer.write_sample(*item)?;
     }
     writer.finalize()?;
 

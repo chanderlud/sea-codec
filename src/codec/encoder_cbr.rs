@@ -42,9 +42,9 @@ impl SeaEncoderTrait for CbrEncoder {
 
         let mut residuals: Vec<u8> = vec![0u8; samples.len()];
 
-        let mut ranks = vec![0u64; self.channels as usize];
+        let mut ranks = vec![0u64; self.channels];
 
-        let slice_size = self.scale_factor_frames as usize * self.channels;
+        let slice_size = self.scale_factor_frames * self.channels;
 
         let residual_sizes = vec![self.residual_size; self.channels];
 

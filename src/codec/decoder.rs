@@ -20,12 +20,11 @@ impl Decoder {
     pub fn decode_cbr(&self, chunk: &SeaChunk) -> Vec<i16> {
         assert_eq!(chunk.scale_factor_bits as usize, self.scale_factor_bits);
 
-        let mut output: Vec<i16> =
-            Vec::with_capacity(chunk.frames_per_chunk as usize * self.channels);
+        let mut output: Vec<i16> = Vec::with_capacity(chunk.frames_per_chunk * self.channels);
 
         let mut lms = chunk.lms.clone();
 
-        let dqts: &Vec<Vec<i32>> = &self.dequant_tab.get_dqt(chunk.residual_size as usize);
+        let dqts: &Vec<Vec<i32>> = self.dequant_tab.get_dqt(chunk.residual_size as usize);
 
         for (scale_factor_index, subchunk_residuals) in chunk
             .residuals
@@ -42,7 +41,7 @@ impl Decoder {
                     let dequantized = dqts[scale_factor as usize][quantized];
                     let reconstructed = clamp_i16(predicted + dequantized);
                     output.push(reconstructed);
-                    lms[channel_index].update(reconstructed as i16, dequantized);
+                    lms[channel_index].update(reconstructed, dequantized);
                 }
             }
         }
@@ -53,8 +52,7 @@ impl Decoder {
     pub fn decode_vbr(&self, chunk: &SeaChunk) -> Vec<i16> {
         assert_eq!(chunk.scale_factor_bits as usize, self.scale_factor_bits);
 
-        let mut output: Vec<i16> =
-            Vec::with_capacity(chunk.frames_per_chunk as usize * self.channels);
+        let mut output: Vec<i16> = Vec::with_capacity(chunk.frames_per_chunk * self.channels);
 
         let mut lms = chunk.lms.clone();
 
@@ -76,11 +74,10 @@ impl Decoder {
                     let scale_factor = scale_factors[channel_index];
                     let predicted = lms[channel_index].predict();
                     let quantized: usize = *residual as usize;
-                    let dequantized =
-                        dqts[residual_size as usize - 1][scale_factor as usize][quantized];
+                    let dequantized = dqts[residual_size - 1][scale_factor as usize][quantized];
                     let reconstructed = clamp_i16(predicted + dequantized);
                     output.push(reconstructed);
-                    lms[channel_index].update(reconstructed as i16, dequantized);
+                    lms[channel_index].update(reconstructed, dequantized);
                 }
             }
         }

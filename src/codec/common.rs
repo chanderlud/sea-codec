@@ -119,7 +119,7 @@ pub fn read_max_or_zero<R: io::Read>(mut reader: R, at_least_bytes: usize) -> io
         return Ok(Vec::new());
     }
 
-    return Ok(buffer[..total_bytes_read].to_vec());
+    Ok(buffer[..total_bytes_read].to_vec())
 }
 
 #[derive(Debug)]

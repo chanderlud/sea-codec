@@ -17,7 +17,7 @@ fn test_sample_len() {
                 let output = encode_decode(
                     &input,
                     TEST_SAMPLE_RATE,
-                    channels as u32,
+                    channels,
                     EncoderSettings {
                         scale_factor_bits: 4,
                         ..Default::default()
@@ -46,7 +46,7 @@ fn test_parameters() {
                     let output = encode_decode(
                         &input,
                         TEST_SAMPLE_RATE,
-                        channels as u32,
+                        channels,
                         EncoderSettings {
                             residual_bits: residual_bits as f32,
                             scale_factor_bits,

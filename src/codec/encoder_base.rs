@@ -22,7 +22,7 @@ pub struct EncoderBase {
 #[inline(always)]
 pub fn sea_div(v: i32, scalefactor_reciprocal: i64) -> i32 {
     let n = (v as i64 * scalefactor_reciprocal + (1 << 15)) >> 16;
-    (n + (v.signum() as i64 - n.signum() as i64)) as i32
+    (n + (v.signum() as i64 - n.signum())) as i32
 }
 
 impl EncoderBase {
@@ -40,6 +40,7 @@ impl EncoderBase {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn calculate_residuals(
         &self,
         channels: usize,
@@ -60,7 +61,7 @@ impl EncoderBase {
 
         let quant_tab_offset = clamp_limit + quant_tab.offsets[residual_size as usize] as i32;
 
-        for (index, sample_i16) in samples.iter().step_by(channels as usize).enumerate() {
+        for (index, sample_i16) in samples.iter().step_by(channels).enumerate() {
             let sample = *sample_i16 as i32;
             let predicted = lms.predict();
             let residual = sample - predicted;
@@ -90,10 +91,11 @@ impl EncoderBase {
         current_rank
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn get_residuals_with_best_scalefactor(
         &self,
         channels: usize,
-        dequant_tab: &Vec<Vec<i32>>,
+        dequant_tab: &[Vec<i32>],
         scalefactor_reciprocals: &[i32],
         samples: &[i16],
         prev_scalefactor: i32, // provided as optimization, can be 0
@@ -114,25 +116,25 @@ impl EncoderBase {
         for sfi in 0..scalefactor_end {
             let scalefactor: i32 = (sfi + prev_scalefactor) % scalefactor_end;
 
-            current_lms.clone_from(&ref_lms);
+            current_lms.clone_from(ref_lms);
 
             let dqt = &dequant_tab[scalefactor as usize];
 
             let current_rank = self.calculate_residuals(
                 channels,
                 dqt,
-                &samples,
+                samples,
                 scalefactor,
                 &mut current_lms,
                 best_rank,
                 residual_size,
-                &scalefactor_reciprocals,
+                scalefactor_reciprocals,
                 current_residuals,
             );
 
             if current_rank < best_rank {
                 best_rank = current_rank;
-                best_residual_bits[..current_residuals.len()].clone_from_slice(&current_residuals);
+                best_residual_bits[..current_residuals.len()].clone_from_slice(current_residuals);
                 best_lms.clone_from(&current_lms);
                 best_scalefactor = scalefactor;
             }
@@ -144,7 +146,7 @@ impl EncoderBase {
     pub fn get_residuals_for_chunk(
         &mut self,
         samples: &[i16],
-        residual_size: &Vec<SeaResidualSize>,
+        residual_size: &[SeaResidualSize],
         scale_factors: &mut [u8],
         residuals: &mut [u8],
         ranks: &mut [u64],
@@ -155,7 +157,7 @@ impl EncoderBase {
         let mut current_residuals = mem::take(&mut self.current_residuals);
         current_residuals.resize(best_residual_bits.len(), 0);
 
-        for channel_offset in 0..self.channels as usize {
+        for channel_offset in 0..self.channels {
             let dqt: &Vec<Vec<i32>> = self
                 .dequant_tab
                 .get_dqt(residual_size[channel_offset] as usize);
@@ -169,7 +171,7 @@ impl EncoderBase {
                 dqt,
                 scalefactor_reciprocals,
                 &samples[channel_offset..],
-                self.prev_scalefactor[channel_offset] as i32,
+                self.prev_scalefactor[channel_offset],
                 &self.lms[channel_offset],
                 residual_size[channel_offset],
                 &mut best_residual_bits,
@@ -184,7 +186,7 @@ impl EncoderBase {
 
             // interleave output
             for i in 0..best_residual_bits.len() {
-                residuals[i * self.channels as usize + channel_offset] = best_residual_bits[i];
+                residuals[i * self.channels + channel_offset] = best_residual_bits[i];
             }
         }
 
